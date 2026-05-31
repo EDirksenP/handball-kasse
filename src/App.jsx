@@ -32,13 +32,13 @@ const DEFAULT_GETRAENKE = [
 ];
 
 const CATEGORIES = {
-  getraenk: { label: "Getränk", emoji: "🥤", color: "#f48c06" },
+  getraenk: { label: "Getränk", emoji: "🥤", color: "#2288FF" },
   einnahme:  { label: "Einnahme", emoji: "💰", color: "#4ade80" },
   ausgabe:   { label: "Ausgabe",  emoji: "🛒", color: "#f87171" },
   spende:    { label: "Spende",   emoji: "🤝", color: "#60a5fa" },
 };
 
-const COLORS = ["#e85d04","#4ade80","#60a5fa","#f472b6","#a78bfa","#34d399","#fb923c","#38bdf8"];
+const COLORS = ["#0066CC","#4ade80","#60a5fa","#f472b6","#a78bfa","#34d399","#fb923c","#38bdf8"];
 const playerColor = (id) => COLORS[Math.abs(String(id).split("").reduce((a,c)=>a+c.charCodeAt(0),0)) % COLORS.length];
 const avatar = (name) => name.trim().split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
 const today  = () => new Date().toISOString().split("T")[0];
@@ -47,7 +47,7 @@ const emojis  = ["🥤","🍺","☕","💧","🍊","⚡","🧃","🫖","🍵","�
 
 const iStyle = {
   width:"100%", marginTop:8, padding:"13px 16px",
-  background:"rgba(255,255,255,0.05)", border:"1px solid #2d3748",
+  background:"rgba(255,255,255,0.05)", border:"1px solid #003070",
   borderRadius:12, color:"#e2e8f0", fontSize:15, outline:"none", boxSizing:"border-box",
 };
 
@@ -72,35 +72,35 @@ function LoginScreen({ onLogin }) {
   return (
     <div style={{
       minHeight:"100vh",
-      background:"linear-gradient(160deg,#0f1923 0%,#1a2a3a 50%,#0f1923 100%)",
+      background:"linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
       display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
       fontFamily:"'Segoe UI',system-ui,sans-serif", color:"#e2e8f0", padding:32,
     }}>
       <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}`}</style>
       <div style={{
         width:72, height:72, borderRadius:20, fontSize:36, marginBottom:20,
-        background:"linear-gradient(135deg,#e85d04,#f48c06)",
+        background:"linear-gradient(135deg,#0066CC,#2288FF)",
         display:"flex", alignItems:"center", justifyContent:"center",
-        boxShadow:"0 8px 30px rgba(232,93,4,0.4)",
+        boxShadow:"0 8px 30px rgba(0,102,204,0.4)",
       }}>🤾</div>
-      <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>Handball Kasse</div>
-      <div style={{fontSize:13,color:"#94a3b8",marginBottom:36}}>HSG Herren — Bitte anmelden</div>
+      <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>HSG Emden Kasse</div>
+      <div style={{fontSize:13,color:"#94a3b8",marginBottom:36}}>HSG Emden Herren — Bitte anmelden</div>
       <div style={{width:"100%",maxWidth:320,animation:shake?"shake 0.4s ease":"none"}}>
         <div style={{fontSize:11,color:"#94a3b8",fontWeight:700,marginBottom:8,letterSpacing:1}}>PASSWORT</div>
         <input type="password" placeholder="Passwort eingeben..." value={input}
           onChange={e=>{setInput(e.target.value);setFehler(false);}}
           onKeyDown={e=>e.key==="Enter"&&tryLogin()} autoFocus
-          style={{...iStyle,marginTop:0,border:`2px solid ${fehler?"#f87171":"#2d3748"}`}} />
+          style={{...iStyle,marginTop:0,border:`2px solid ${fehler?"#f87171":"#003070"}`}} />
         {fehler && <div style={{color:"#f87171",fontSize:12,fontWeight:600,marginTop:8}}>❌ Falsches Passwort</div>}
         <button onClick={tryLogin} style={{
           width:"100%",marginTop:16,padding:"15px",
-          background:"linear-gradient(135deg,#e85d04,#f48c06)",
+          background:"linear-gradient(135deg,#0066CC,#2288FF)",
           border:"none",borderRadius:14,color:"white",
           fontSize:15,fontWeight:800,cursor:"pointer",
-          boxShadow:"0 6px 20px rgba(232,93,4,0.4)",
+          boxShadow:"0 6px 20px rgba(0,102,204,0.4)",
         }}>🔓 Anmelden</button>
       </div>
-      <div style={{marginTop:40,fontSize:12,color:"#334155"}}>🔒 Geschützte Vereinskasse</div>
+      <div style={{marginTop:40,fontSize:12,color:"#334155"}}>🔒 🔵⚪ HSG Emden Vereinskasse</div>
     </div>
   );
 }
@@ -226,7 +226,7 @@ function MainApp({ onLogout }) {
 
   if (loading) return (
     <div style={{
-      minHeight:"100vh",background:"linear-gradient(160deg,#0f1923 0%,#1a2a3a 50%,#0f1923 100%)",
+      minHeight:"100vh",background:"linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
       display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
       fontFamily:"'Segoe UI',system-ui,sans-serif",color:"#e2e8f0",gap:16,
     }}>
@@ -239,26 +239,26 @@ function MainApp({ onLogout }) {
   return (
     <div style={{
       minHeight:"100vh",
-      background:"linear-gradient(160deg,#0f1923 0%,#1a2a3a 50%,#0f1923 100%)",
+      background:"linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
       fontFamily:"'Segoe UI',system-ui,sans-serif",
       color:"#e2e8f0", maxWidth:480, margin:"0 auto", position:"relative",
     }}>
 
       {/* ── HEADER ── */}
       <div style={{
-        background:"linear-gradient(135deg,#1e3a5f 0%,#0f2740 100%)",
-        padding:"18px 20px 14px", borderBottom:"2px solid #2d5a8e",
+        background:"linear-gradient(135deg,#003F8A 0%,#001F50 100%)",
+        padding:"18px 20px 14px", borderBottom:"2px solid #0055AA",
         position:"sticky", top:0, zIndex:20,
       }}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{
             width:42,height:42,borderRadius:12,fontSize:20,flexShrink:0,
-            background:"linear-gradient(135deg,#e85d04,#f48c06)",
+            background:"linear-gradient(135deg,#0066CC,#2288FF)",
             display:"flex",alignItems:"center",justifyContent:"center",
-            boxShadow:"0 4px 15px rgba(232,93,4,0.4)",
+            boxShadow:"0 4px 15px rgba(0,102,204,0.4)",
           }}>🤾</div>
           <div>
-            <div style={{fontSize:17,fontWeight:800}}>Handball Kasse</div>
+            <div style={{fontSize:17,fontWeight:800}}>HSG Emden Kasse</div>
             <div style={{fontSize:11,color:"#94a3b8"}}>🔴 Live · Echtzeit</div>
           </div>
           <div style={{
@@ -274,7 +274,7 @@ function MainApp({ onLogout }) {
           </div>
           <button onClick={onLogout} title="Abmelden" style={{
             marginLeft:8,background:"rgba(255,255,255,0.05)",
-            border:"1px solid #2d3748",color:"#64748b",
+            border:"1px solid #003070",color:"#64748b",
             borderRadius:9,padding:"7px 9px",fontSize:15,cursor:"pointer",flexShrink:0,
           }}>🔒</button>
         </div>
@@ -289,7 +289,7 @@ function MainApp({ onLogout }) {
             <div style={{fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:14}}>⚡ Schnell-Buchen</div>
 
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,
-              background:"rgba(255,255,255,0.04)",border:"1px solid #2d3748",
+              background:"rgba(255,255,255,0.04)",border:"1px solid #003070",
               borderRadius:12,padding:"10px 14px"}}>
               <span style={{fontSize:16}}>📅</span>
               <span style={{fontSize:13,color:"#94a3b8",fontWeight:600}}>Datum:</span>
@@ -302,7 +302,7 @@ function MainApp({ onLogout }) {
             {spieler.length===0 ? (
               <div style={{textAlign:"center",color:"#475569",padding:"20px 0",fontSize:13}}>
                 <div style={{fontSize:32,marginBottom:8}}>👥</div>
-                Gehe zu <strong style={{color:"#f48c06"}}>Spieler</strong> um Spieler hinzuzufügen.
+                Gehe zu <strong style={{color:"#2288FF"}}>Spieler</strong> um Spieler hinzuzufügen.
               </div>
             ) : (
               <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20}}>
@@ -310,7 +310,7 @@ function MainApp({ onLogout }) {
                   <button key={sp.id} onClick={()=>setGewSpieler(gewSpieler===sp.id?null:sp.id)} style={{
                     display:"flex",alignItems:"center",gap:8,
                     padding:"8px 14px",borderRadius:24,cursor:"pointer",
-                    border:`2px solid ${gewSpieler===sp.id?playerColor(sp.id):"#2d3748"}`,
+                    border:`2px solid ${gewSpieler===sp.id?playerColor(sp.id):"#003070"}`,
                     background:gewSpieler===sp.id?`${playerColor(sp.id)}22`:"rgba(255,255,255,0.03)",
                     color:gewSpieler===sp.id?playerColor(sp.id):"#94a3b8",
                     fontWeight:gewSpieler===sp.id?800:500,fontSize:14,transition:"all 0.15s",
@@ -318,7 +318,7 @@ function MainApp({ onLogout }) {
                     <div style={{
                       width:28,height:28,borderRadius:"50%",background:playerColor(sp.id),
                       display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:11,fontWeight:800,color:"#0f1923",flexShrink:0,
+                      fontSize:11,fontWeight:800,color:"#00112E",flexShrink:0,
                     }}>{avatar(sp.name)}</div>
                     {sp.name.split(" ")[0]}
                   </button>
@@ -331,15 +331,15 @@ function MainApp({ onLogout }) {
               {getraenke.map(g=>(
                 <button key={g.id} onClick={()=>buchGetraenk(g)} style={{
                   padding:"14px 10px",borderRadius:14,cursor:"pointer",
-                  border:`1px solid ${gewSpieler?"#f48c0644":"#2d3748"}`,
-                  background:gewSpieler?"rgba(244,140,6,0.08)":"rgba(255,255,255,0.03)",
+                  border:`1px solid ${gewSpieler?"#2288FF44":"#003070"}`,
+                  background:gewSpieler?"rgba(34,136,255,0.08)":"rgba(255,255,255,0.03)",
                   color:gewSpieler?"#e2e8f0":"#475569",
                   display:"flex",flexDirection:"column",alignItems:"center",gap:6,
                   transition:"all 0.15s",opacity:gewSpieler?1:0.5,
                 }}>
                   <span style={{fontSize:26}}>{g.emoji}</span>
                   <span style={{fontSize:13,fontWeight:700}}>{g.name}</span>
-                  <span style={{fontSize:13,color:"#f48c06",fontWeight:800}}>{g.preis.toFixed(2)} €</span>
+                  <span style={{fontSize:13,color:"#2288FF",fontWeight:800}}>{g.preis.toFixed(2)} €</span>
                 </button>
               ))}
             </div>
@@ -347,8 +347,8 @@ function MainApp({ onLogout }) {
             {gewSpieler && (
               <div style={{
                 marginTop:16,padding:"10px 14px",borderRadius:12,
-                background:"rgba(244,140,6,0.1)",border:"1px solid #f48c0644",
-                fontSize:13,color:"#f48c06",textAlign:"center",fontWeight:600,
+                background:"rgba(34,136,255,0.1)",border:"1px solid #2288FF44",
+                fontSize:13,color:"#2288FF",textAlign:"center",fontWeight:600,
               }}>
                 ✅ {spieler.find(s=>s.id===gewSpieler)?.name} — Getränk antippen zum Buchen
               </div>
@@ -365,7 +365,7 @@ function MainApp({ onLogout }) {
               {Object.entries(CATEGORIES).map(([key,cat])=>(
                 <button key={key} onClick={()=>setMForm(f=>({...f,typ:key}))} style={{
                   flex:1,padding:"10px 4px",borderRadius:11,cursor:"pointer",
-                  border:`2px solid ${mForm.typ===key?cat.color:"#2d3748"}`,
+                  border:`2px solid ${mForm.typ===key?cat.color:"#003070"}`,
                   background:mForm.typ===key?`${cat.color}20`:"rgba(255,255,255,0.03)",
                   color:mForm.typ===key?cat.color:"#64748b",
                   fontSize:11,fontWeight:700,
@@ -394,10 +394,10 @@ function MainApp({ onLogout }) {
 
             <button onClick={addManual} style={{
               width:"100%",marginTop:20,padding:"15px",
-              background:"linear-gradient(135deg,#e85d04,#f48c06)",
+              background:"linear-gradient(135deg,#0066CC,#2288FF)",
               border:"none",borderRadius:14,color:"white",
               fontSize:15,fontWeight:800,cursor:"pointer",
-              boxShadow:"0 6px 20px rgba(232,93,4,0.4)",
+              boxShadow:"0 6px 20px rgba(0,102,204,0.4)",
             }}>✅ Eintrag speichern</button>
           </div>
         )}
@@ -411,9 +411,9 @@ function MainApp({ onLogout }) {
               {[["alle","Alle","📋"],["getraenk","Getränk","🥤"],["einnahme","Einnahme","💰"],["ausgabe","Ausgabe","🛒"],["spende","Spende","🤝"]].map(([k,l,e])=>(
                 <button key={k} onClick={()=>setVFilter(k)} style={{
                   padding:"5px 11px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600,
-                  border:`1px solid ${vFilter===k?"#e85d04":"#2d3748"}`,
-                  background:vFilter===k?"rgba(232,93,4,0.2)":"rgba(255,255,255,0.03)",
-                  color:vFilter===k?"#f48c06":"#64748b",
+                  border:`1px solid ${vFilter===k?"#0066CC":"#003070"}`,
+                  background:vFilter===k?"rgba(0,102,204,0.2)":"rgba(255,255,255,0.03)",
+                  color:vFilter===k?"#2288FF":"#64748b",
                 }}>{e} {l}</button>
               ))}
             </div>
@@ -422,14 +422,14 @@ function MainApp({ onLogout }) {
               <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
                 <button onClick={()=>setVSpieler("alle")} style={{
                   padding:"5px 11px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600,
-                  border:`1px solid ${vSpieler==="alle"?"#60a5fa":"#2d3748"}`,
+                  border:`1px solid ${vSpieler==="alle"?"#60a5fa":"#003070"}`,
                   background:vSpieler==="alle"?"rgba(96,165,250,0.2)":"rgba(255,255,255,0.03)",
                   color:vSpieler==="alle"?"#60a5fa":"#64748b",
                 }}>👥 Alle</button>
                 {spieler.map(sp=>(
                   <button key={sp.id} onClick={()=>setVSpieler(vSpieler===sp.id?"alle":sp.id)} style={{
                     padding:"5px 11px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600,
-                    border:`1px solid ${vSpieler===sp.id?playerColor(sp.id):"#2d3748"}`,
+                    border:`1px solid ${vSpieler===sp.id?playerColor(sp.id):"#003070"}`,
                     background:vSpieler===sp.id?`${playerColor(sp.id)}22`:"rgba(255,255,255,0.03)",
                     color:vSpieler===sp.id?playerColor(sp.id):"#64748b",
                   }}>{sp.name.split(" ")[0]}</button>
@@ -476,7 +476,7 @@ function MainApp({ onLogout }) {
             <div style={{fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:14}}>📊 Übersicht</div>
 
             {[
-              {label:"Getränke-Einnahmen",value:getraenkSum,emoji:"🥤",color:"#f48c06",bg:"rgba(244,140,6,0.08)",key:"getraenk"},
+              {label:"Getränke-Einnahmen",value:getraenkSum,emoji:"🥤",color:"#2288FF",bg:"rgba(34,136,255,0.08)",key:"getraenk"},
               {label:"Einnahmen",value:einnahmen,emoji:"💰",color:"#4ade80",bg:"rgba(74,222,128,0.08)",key:"einnahme"},
               {label:"Ausgaben",value:ausgaben,emoji:"🛒",color:"#f87171",bg:"rgba(248,113,113,0.08)",key:"ausgabe"},
               {label:"Spenden",value:spenden,emoji:"🤝",color:"#60a5fa",bg:"rgba(96,165,250,0.08)",key:"spende"},
@@ -499,8 +499,8 @@ function MainApp({ onLogout }) {
             ))}
 
             <div style={{
-              background:"linear-gradient(135deg,#1e3a5f,#0f2740)",
-              border:"2px solid #2d5a8e",borderRadius:15,padding:"18px 16px",marginTop:4,
+              background:"linear-gradient(135deg,#003F8A,#001F50)",
+              border:"2px solid #0055AA",borderRadius:15,padding:"18px 16px",marginTop:4,
               display:"flex",alignItems:"center",justifyContent:"space-between",
             }}>
               <div>
@@ -528,7 +528,7 @@ function MainApp({ onLogout }) {
                     <div style={{
                       width:36,height:36,borderRadius:"50%",background:playerColor(sp.id),
                       display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:13,fontWeight:800,color:"#0f1923",
+                      fontSize:13,fontWeight:800,color:"#00112E",
                     }}>{avatar(sp.name)}</div>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:700,fontSize:14}}>{sp.name}</div>
@@ -553,7 +553,7 @@ function MainApp({ onLogout }) {
                 onKeyDown={e=>e.key==="Enter"&&addSpieler()}
                 style={{...iStyle,marginTop:0,flex:1}} />
               <button onClick={addSpieler} style={{
-                padding:"0 18px",background:"linear-gradient(135deg,#e85d04,#f48c06)",
+                padding:"0 18px",background:"linear-gradient(135deg,#0066CC,#2288FF)",
                 border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:20,cursor:"pointer",flexShrink:0,
               }}>+</button>
             </div>
@@ -569,7 +569,7 @@ function MainApp({ onLogout }) {
                     <input value={editSpieler.name} onChange={e=>setEditSpieler(s=>({...s,name:e.target.value}))}
                       style={{...iStyle,marginTop:0,flex:1}} />
                     <button onClick={saveEditSpieler} style={{padding:"0 14px",background:"#4ade8022",border:"1px solid #4ade80",color:"#4ade80",borderRadius:10,cursor:"pointer",fontWeight:700}}>✓</button>
-                    <button onClick={()=>setEditSpieler(null)} style={{padding:"0 12px",background:"rgba(255,255,255,0.05)",border:"1px solid #2d3748",color:"#94a3b8",borderRadius:10,cursor:"pointer"}}>✕</button>
+                    <button onClick={()=>setEditSpieler(null)} style={{padding:"0 12px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer"}}>✕</button>
                   </div>
                 ) : (
                   <div style={{
@@ -580,7 +580,7 @@ function MainApp({ onLogout }) {
                     <div style={{
                       width:38,height:38,borderRadius:"50%",background:playerColor(sp.id),
                       display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:13,fontWeight:800,color:"#0f1923",
+                      fontSize:13,fontWeight:800,color:"#00112E",
                     }}>{avatar(sp.name)}</div>
                     <div style={{flex:1,fontWeight:700}}>{sp.name}</div>
                     <div style={{fontSize:12,color:"#64748b",marginRight:4}}>
@@ -599,8 +599,8 @@ function MainApp({ onLogout }) {
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
               {emojis.map(em=>(
                 <button key={em} onClick={()=>setGForm(f=>({...f,emoji:em}))} style={{
-                  fontSize:20,background:gForm.emoji===em?"rgba(244,140,6,0.2)":"rgba(255,255,255,0.03)",
-                  border:`1px solid ${gForm.emoji===em?"#f48c06":"#2d3748"}`,
+                  fontSize:20,background:gForm.emoji===em?"rgba(34,136,255,0.2)":"rgba(255,255,255,0.03)",
+                  border:`1px solid ${gForm.emoji===em?"#2288FF":"#003070"}`,
                   borderRadius:8,padding:"4px 7px",cursor:"pointer",
                 }}>{em}</button>
               ))}
@@ -613,7 +613,7 @@ function MainApp({ onLogout }) {
                 onChange={e=>setGForm(f=>({...f,preis:e.target.value}))}
                 style={{...iStyle,marginTop:0,flex:1}} />
               <button onClick={addGetraenk} style={{
-                padding:"0 16px",background:"linear-gradient(135deg,#e85d04,#f48c06)",
+                padding:"0 16px",background:"linear-gradient(135deg,#0066CC,#2288FF)",
                 border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:20,cursor:"pointer",flexShrink:0,
               }}>+</button>
             </div>
@@ -628,17 +628,17 @@ function MainApp({ onLogout }) {
                     <input type="number" value={editG.preis} onChange={e=>setEditG(x=>({...x,preis:e.target.value}))}
                       style={{...iStyle,marginTop:0,flex:1}} />
                     <button onClick={saveEditG} style={{padding:"0 12px",background:"#4ade8022",border:"1px solid #4ade80",color:"#4ade80",borderRadius:10,cursor:"pointer",fontWeight:700,height:48}}>✓</button>
-                    <button onClick={()=>setEditG(null)} style={{padding:"0 10px",background:"rgba(255,255,255,0.05)",border:"1px solid #2d3748",color:"#94a3b8",borderRadius:10,cursor:"pointer",height:48}}>✕</button>
+                    <button onClick={()=>setEditG(null)} style={{padding:"0 10px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer",height:48}}>✕</button>
                   </div>
                 ) : (
                   <div style={{
                     display:"flex",alignItems:"center",gap:10,
                     padding:"10px 14px",borderRadius:12,marginBottom:8,
-                    background:"rgba(255,255,255,0.03)",border:"1px solid #f48c0622",
+                    background:"rgba(255,255,255,0.03)",border:"1px solid #2288FF22",
                   }}>
                     <span style={{fontSize:20}}>{g.emoji}</span>
                     <span style={{flex:1,fontWeight:700}}>{g.name}</span>
-                    <span style={{color:"#f48c06",fontWeight:800}}>{g.preis.toFixed(2)} €</span>
+                    <span style={{color:"#2288FF",fontWeight:800}}>{g.preis.toFixed(2)} €</span>
                     <button onClick={()=>setEditG(g)} style={{background:"rgba(96,165,250,0.1)",border:"1px solid rgba(96,165,250,0.3)",color:"#60a5fa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}}>✏️</button>
                     <button onClick={()=>deleteGetraenk(g.id)} style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",color:"#f87171",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}}>🗑️</button>
                   </div>
@@ -654,12 +654,12 @@ function MainApp({ onLogout }) {
         position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",
         width:"100%",maxWidth:480,
         background:"rgba(15,25,35,0.97)",backdropFilter:"blur(20px)",
-        borderTop:"1px solid #1e3a5f",display:"flex",padding:"8px 0 20px",zIndex:20,
+        borderTop:"1px solid #003F8A",display:"flex",padding:"8px 0 20px",zIndex:20,
       }}>
         {[["buchen","⚡","Buchen"],["neu","✏️","Manuell"],["übersicht","📊","Übersicht"],["verlauf","📋","Verlauf"],["spieler","👥","Spieler"]].map(([key,emoji,label])=>(
           <button key={key} onClick={()=>setTab(key)} style={{
             flex:1,background:"none",border:"none",
-            color:tab===key?"#f48c06":"#475569",
+            color:tab===key?"#2288FF":"#475569",
             cursor:"pointer",padding:"6px 0",
             display:"flex",flexDirection:"column",alignItems:"center",gap:3,
           }}>
@@ -673,7 +673,7 @@ function MainApp({ onLogout }) {
       {toast && (
         <div style={{
           position:"fixed",top:76,left:"50%",transform:"translateX(-50%)",
-          background:"#1e3a5f",border:"1px solid #2d5a8e",
+          background:"#003F8A",border:"1px solid #0055AA",
           color:"#e2e8f0",padding:"11px 22px",borderRadius:12,
           fontSize:13,fontWeight:700,zIndex:100,
           boxShadow:"0 8px 30px rgba(0,0,0,0.5)",whiteSpace:"nowrap",
