@@ -223,7 +223,7 @@ function MainApp({cu,onLogout}) {
   const [getraenke,setGetraenke]=useState([]);
   const [benutzer,setBenutzer]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [tab,setTab]=useState("buchen");
+  const [tab,setTab]=useState("konto");
   const [toastMsg,setToastMsg]=useState(null);
   const [gwS,setGwS]=useState(null);
   const [datum,setDatum]=useState(todayStr());
@@ -284,7 +284,7 @@ function MainApp({cu,onLogout}) {
   const kasse=ein+spe+gSum-aus;
   const sortE=[...eintraege].sort((a,b)=>(b.ts||0)-(a.ts||0));
   const verl=sortE.filter(e=>vF==="alle"||e.typ===vF).filter(e=>vS==="alle"||e.spielerId===vS);
-  const navs=[["buchen","⚡","Buchen"],["neu","✏️","Manuell"],["übersicht","📊","Übersicht"],["verlauf","📋","Verlauf"],["spieler","👥","Spieler"],...(isAdmin?[["benutzer","👑","Benutzer"]]:[])];
+  const navs=[["konto","👤","Mein Konto"],["buchen","⚡","Buchen"],["neu","✏️","Manuell"],["übersicht","📊","Übersicht"],["verlauf","📋","Verlauf"],["spieler","👥","Spieler"],...(isAdmin?[["benutzer","👑","Benutzer"]]:[])];
 
   if(loading)return <div style={{minHeight:"100vh",background:"#00112E",display:"flex",alignItems:"center",justifyContent:"center"}}><img src={LOGO} style={{width:80,objectFit:"contain"}}/></div>;
 
@@ -307,6 +307,99 @@ function MainApp({cu,onLogout}) {
       </div>
 
       <div style={{paddingBottom:95}}>
+
+        {tab==="konto"&&(()=>{
+          const meineBuchungen = [...eintraege].filter(e=>e.person===cu.vorname+" "+cu.nachname||e.spielerId===spieler.find(s=>s.name===cu.vorname+" "+cu.nachname)?.id).sort((a,b)=>(b.ts||0)-(a.ts||0));
+          const meineGetraenke = meineBuchungen.filter(e=>e.typ==="getraenk");
+          const getraenkGesamt = meineGetraenke.reduce((s,e)=>s+e.betrag,0);
+          const meineBenutzer = benutzer.find(b=>b.id===cu.id);
+          const meinGuthaben = meineBenutzer?.guthaben||0;
+          // Lieblingsgetraenk
+          const gCount = {};
+          meineGetraenke.forEach(e=>{gCount[e.beschreibung]=(gCount[e.beschreibung]||0)+1;});
+          const lieblings = Object.entries(gCount).sort((a,b)=>b[1]-a[1])[0];
+          // Zahlarten
+          const perGuthaben = meineGetraenke.filter(e=>e.zahlart==="guthaben").length;
+          const perDirekt   = meineGetraenke.filter(e=>e.zahlart==="direkt").length;
+          return (
+            <div style={{padding:20}}>
+              <div style={{fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:16}}>👤 Mein Konto</div>
+
+              {/* Profil-Karte */}
+              <div style={{background:"linear-gradient(135deg,#003F8A,#001F50)",border:"2px solid #0055AA",borderRadius:16,padding:20,marginBottom:16,display:"flex",alignItems:"center",gap:16}}>
+                <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#0066CC,#2288FF)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"white",flexShrink:0}}>{ava(cu.vorname+" "+cu.nachname)}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:18,fontWeight:800}}>{cu.vorname} {cu.nachname}</div>
+                  <div style={{fontSize:12,color:"#93c5fd",marginTop:2}}>👤 {cu.benutzername}</div>
+                  <div style={{fontSize:12,color:"#64748b",marginTop:2}}>🤾 {cu.mannschaft||""}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>Guthaben</div>
+                  <div style={{fontSize:22,fontWeight:900,color:meinGuthaben>0?"#4ade80":"#f87171"}}>{meinGuthaben.toFixed(2)} €</div>
+                </div>
+              </div>
+
+              {/* Statistik-Karten */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                <div style={{background:"rgba(34,136,255,0.08)",border:"1px solid #2288FF30",borderRadius:12,padding:14,textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>🥤</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#2288FF"}}>{meineGetraenke.length}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Getränke total</div>
+                </div>
+                <div style={{background:"rgba(74,222,128,0.08)",border:"1px solid #4ade8030",borderRadius:12,padding:14,textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>💶</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#4ade80"}}>{getraenkGesamt.toFixed(2)} €</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Ausgegeben</div>
+                </div>
+                <div style={{background:"rgba(96,165,250,0.08)",border:"1px solid #60a5fa30",borderRadius:12,padding:14,textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>💵</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#60a5fa"}}>{perDirekt}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Direkt gezahlt</div>
+                </div>
+                <div style={{background:"rgba(163,230,53,0.08)",border:"1px solid #a3e63530",borderRadius:12,padding:14,textAlign:"center"}}>
+                  <div style={{fontSize:24,marginBottom:4}}>💰</div>
+                  <div style={{fontSize:22,fontWeight:800,color:"#a3e635"}}>{perGuthaben}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Per Guthaben</div>
+                </div>
+              </div>
+
+              {/* Lieblingsgetränk */}
+              {lieblings&&(
+                <div style={{background:"rgba(244,140,6,0.08)",border:"1px solid #f48c0630",borderRadius:12,padding:14,marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{fontSize:32}}>{meineGetraenke.find(e=>e.beschreibung===lieblings[0])?.getraenkEmoji||"🥤"}</div>
+                  <div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>Lieblingsgetränk</div>
+                    <div style={{fontSize:18,fontWeight:800,color:"#f48c06"}}>{lieblings[0]}</div>
+                    <div style={{fontSize:12,color:"#64748b"}}>{lieblings[1]}× bestellt</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Guthaben Hinweis */}
+              {meinGuthaben<=2&&meinGuthaben>=0&&(
+                <div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:12,padding:12,marginBottom:16,fontSize:13,color:"#f87171",fontWeight:600,textAlign:"center"}}>
+                  ⚠️ {meinGuthaben===0?"Kein Guthaben mehr!":"Guthaben fast aufgebraucht!"} Bitte beim Admin aufladen lassen.
+                </div>
+              )}
+
+              {/* Meine letzten Buchungen */}
+              <div style={{fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>📋 Meine letzten Buchungen</div>
+              {meineBuchungen.length===0
+                ?<div style={{textAlign:"center",color:"#475569",padding:"30px 0"}}>📭 Noch keine Buchungen</div>
+                :meineBuchungen.slice(0,10).map(e=>(
+                  <div key={e.id} style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${CATS[e.typ]?.color}25`,borderLeft:`3px solid ${CATS[e.typ]?.color}`,borderRadius:12,padding:"10px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{fontSize:18}}>{e.getraenkEmoji||CATS[e.typ]?.emoji}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.beschreibung}</div>
+                      <div style={{fontSize:11,color:"#475569",marginTop:2}}>📅 {e.datum} • {e.zeit}{e.zahlart==="guthaben"?" • 💰":e.zahlart==="direkt"?" • 💵":""}</div>
+                    </div>
+                    <div style={{fontSize:14,fontWeight:800,color:CATS[e.typ]?.color,flexShrink:0}}>{e.typ==="ausgabe"?"-":"+"}{e.betrag.toFixed(2)} €</div>
+                  </div>
+                ))
+              }
+            </div>
+          );
+        })()}
 
         {tab==="buchen"&&(
           <div style={{padding:20}}>
