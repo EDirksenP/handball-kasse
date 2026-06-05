@@ -105,7 +105,7 @@ const fmtD = (r) => r?new Date(r+"T12:00:00").toLocaleDateString("de-DE"):"";
 const mkU = (v,n) => (v.trim().toLowerCase()+"."+n.trim().toLowerCase()).replace(/\s+/g,"");
 const sv = (k,v) => {try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 const ld = (k,fb) => {try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}};
-// IS is now computed dynamically per theme below
+const IS_STATIC = {width:"100%",marginTop:8,padding:"13px 16px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",borderRadius:12,color:"#e2e8f0",fontSize:15,outline:"none",boxSizing:"border-box"};
 
 function Login({onLogin,benutzer}) {
   const [u,setU]=useState(""); const [p,setP]=useState(""); const [err,setErr]=useState(""); const [shake,setShake]=useState(false);
@@ -124,9 +124,9 @@ function Login({onLogin,benutzer}) {
       <div style={{fontSize:13,color:"#94a3b8",marginBottom:32}}>HSG Emden — Bitte anmelden</div>
       <div style={{width:"100%",maxWidth:320,animation:shake?"shake 0.4s ease":"none"}}>
         <label style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1,display:"block"}}>BENUTZERNAME</label>
-        <input type="text" placeholder="vorname.nachname" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} autoFocus style={IS}/>
+        <input type="text" placeholder="vorname.nachname" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} autoFocus style={IS_STATIC}/>
         <label style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1,display:"block",marginTop:14}}>PASSWORT</label>
-        <input type="password" placeholder="Passwort eingeben..." value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={{...IS,border:`2px solid ${err?"#f87171":T.cardBord}`}}/>
+        <input type="password" placeholder="Passwort eingeben..." value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={{...IS_STATIC,border:`2px solid ${err?"#f87171":"#003070"}`}}/>
         {err&&<div style={{color:"#f87171",fontSize:12,fontWeight:600,marginTop:8}}>{err}</div>}
         <button onClick={go} style={{width:"100%",marginTop:18,padding:"15px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:14,color:"white",fontSize:15,fontWeight:800,cursor:"pointer"}}>🔓 Anmelden</button>
       </div>
@@ -136,7 +136,7 @@ function Login({onLogin,benutzer}) {
 }
 
 function BenutzerTab({benutzer,cu,toast,T,IS}) {
-  if(!T) T=THEMES["dark"]; if(!IS) IS={width:"100%",marginTop:8,padding:"13px 16px",background:T.input,border:`1px solid ${T.cardBord}`,borderRadius:12,color:T.text,fontSize:15,outline:"none",boxSizing:"border-box"};
+  
   const [form,setForm]=useState({vorname:"",nachname:"",passwort:"",rolle:"mitglied",mannschaft:"1. Herren"});
   const [edit,setEdit]=useState(null);
   const [gutModal,setGutModal]=useState(null);
@@ -174,8 +174,8 @@ function BenutzerTab({benutzer,cu,toast,T,IS}) {
       {edit?.id===b.id?(
         <div style={{background:T.card,border:`1px solid ${T.cardBord}`,borderRadius:12,padding:14,marginBottom:10}}>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
-            <input value={edit.vorname} onChange={e=>setEdit(x=>({...x,vorname:e.target.value}))} placeholder="Vorname" style={{...IS,marginTop:0,flex:1}}/>
-            <input value={edit.nachname} onChange={e=>setEdit(x=>({...x,nachname:e.target.value}))} placeholder="Nachname" style={{...IS,marginTop:0,flex:1}}/>
+            <input value={edit.vorname} onChange={e=>setEdit(x=>({...x,vorname:e.target.value}))} placeholder="Vorname" style={{...IS_STATIC,marginTop:0,flex:1}}/>
+            <input value={edit.nachname} onChange={e=>setEdit(x=>({...x,nachname:e.target.value}))} placeholder="Nachname" style={{...IS_STATIC,marginTop:0,flex:1}}/>
           </div>
           <div style={{fontSize:12,color:"#2288FF",marginBottom:8,fontWeight:600}}>👤 {bn(edit.vorname,edit.nachname)}</div>
           <input type="text" value={edit.passwort} onChange={e=>setEdit(x=>({...x,passwort:e.target.value}))} placeholder="Passwort" style={{...IS,marginTop:0,marginBottom:8}}/>
@@ -624,14 +624,14 @@ function MainApp({cu,onLogout}) {
           <div style={{padding:20}}>
             <div style={{fontSize:12,color:T.sub,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:14}}>👥 Spieler verwalten</div>
             <div style={{display:"flex",gap:8,marginBottom:20}}>
-              <input type="text" placeholder="Name eingeben…" value={nName} onChange={e=>setNName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addSp()} style={{...IS,marginTop:0,flex:1}}/>
+              <input type="text" placeholder="Name eingeben…" value={nName} onChange={e=>setNName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addSp()} style={{...IS_STATIC,marginTop:0,flex:1}}/>
               <button onClick={addSp} style={{padding:"0 18px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:20,cursor:"pointer",flexShrink:0}}>+</button>
             </div>
             {spieler.map(sp=>(
               <div key={sp.id}>
                 {editSp?.id===sp.id?(
                   <div style={{display:"flex",gap:8,marginBottom:8}}>
-                    <input value={editSp.name} onChange={e=>setEditSp(s=>({...s,name:e.target.value}))} style={{...IS,marginTop:0,flex:1}}/>
+                    <input value={editSp.name} onChange={e=>setEditSp(s=>({...s,name:e.target.value}))} style={{...IS_STATIC,marginTop:0,flex:1}}/>
                     <button onClick={saveEditSp} style={{padding:"0 14px",background:"#4ade8022",border:"1px solid #4ade80",color:"#4ade80",borderRadius:10,cursor:"pointer",fontWeight:700}}>✓</button>
                     <button onClick={()=>setEditSp(null)} style={{padding:"0 12px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer"}}>✕</button>
                   </div>
@@ -652,7 +652,7 @@ function MainApp({cu,onLogout}) {
             </div>
             <div style={{display:"flex",gap:8,marginBottom:8}}>
               <input type="text" placeholder="Name" value={gForm.name} onChange={e=>setGForm(f=>({...f,name:e.target.value}))} style={{...IS,marginTop:0,flex:2}}/>
-              <input type="number" placeholder="€" value={gForm.preis} onChange={e=>setGForm(f=>({...f,preis:e.target.value}))} style={{...IS,marginTop:0,flex:1}}/>
+              <input type="number" placeholder="€" value={gForm.preis} onChange={e=>setGForm(f=>({...f,preis:e.target.value}))} style={{...IS_STATIC,marginTop:0,flex:1}}/>
               <button onClick={addGt} style={{padding:"0 16px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:20,cursor:"pointer",flexShrink:0}}>+</button>
             </div>
             {getraenke.map(g=>(
@@ -661,7 +661,7 @@ function MainApp({cu,onLogout}) {
                   <div style={{display:"flex",gap:7,marginBottom:8,alignItems:"center"}}>
                     <span style={{fontSize:20}}>{editG.emoji}</span>
                     <input value={editG.name} onChange={e=>setEditG(x=>({...x,name:e.target.value}))} style={{...IS,marginTop:0,flex:2}}/>
-                    <input type="number" value={editG.preis} onChange={e=>setEditG(x=>({...x,preis:e.target.value}))} style={{...IS,marginTop:0,flex:1}}/>
+                    <input type="number" value={editG.preis} onChange={e=>setEditG(x=>({...x,preis:e.target.value}))} style={{...IS_STATIC,marginTop:0,flex:1}}/>
                     <button onClick={saveEditGt} style={{padding:"0 12px",background:"#4ade8022",border:"1px solid #4ade80",color:"#4ade80",borderRadius:10,cursor:"pointer",fontWeight:700,height:48}}>✓</button>
                     <button onClick={()=>setEditG(null)} style={{padding:"0 10px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer",height:48}}>✕</button>
                   </div>
