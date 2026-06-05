@@ -119,7 +119,7 @@ function BenutzerTab({benutzer,cu,toast}) {
     const b=parseFloat(gutVal.replace(",","."));
     if(!b||b<=0)return toast("Bitte gültigen Betrag eingeben!");
     await ref("benutzer",gutModal.id).update({guthaben:(gutModal.guthaben||0)+b});
-    await col("eintraege").add({typ:"einnahme",betrag:b,beschreibung:`Guthaben aufgeladen — ${gutModal.vorname} ${gutModal.nachname}`,person:`${gutModal.vorname} ${gutModal.nachname}`,datum:fmtD(todayStr()),datumRaw:todayStr(),zeit:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),gebuchtvon:cu.benutzername,ts:Date.now()});
+    // Kein Kassen-Eintrag beim Aufladen — Guthaben ist internes Spielerkonto
     setGutModal(null);setGutVal("");toast(`✅ ${b.toFixed(2)} € aufgeladen!`);
   };
 
