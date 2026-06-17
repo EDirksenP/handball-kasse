@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3.HSG Emden Kasse</title>
+  <title>HSG Emden Kasse</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -64,6 +64,19 @@ const GETRAENKE_DEFAULT = [{
   name: "Iso",
   preis: 1.20,
   emoji: "⚡"
+}];
+const STRAFEN_DEFAULT = [{
+  grund: "Zu spät zum Training",
+  betrag: 2.00
+}, {
+  grund: "Handy klingelt in der Kabine",
+  betrag: 5.00
+}, {
+  grund: "Trikot/Ausrüstung vergessen",
+  betrag: 3.00
+}, {
+  grund: "Unentschuldigt gefehlt",
+  betrag: 10.00
 }];
 const CATS = {
   getraenk: {
@@ -185,13 +198,13 @@ function Login({
       fontWeight: 800,
       marginBottom: 4
     }
-  }, "3.HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#94a3b8",
       marginBottom: 32
     }
-  }, "3.HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
+  }, "HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
       maxWidth: 320,
@@ -430,6 +443,8 @@ function BenutzerTab({
   }, /*#__PURE__*/React.createElement("option", {
     value: "mitglied"
   }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
+    value: "strafenwart"
+  }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -503,7 +518,14 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.rolle === "strafenwart" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#fb923c",
+      fontWeight: 700,
+      marginTop: 2
+    }
+  }, "⚖️ Strafenwart"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -770,6 +792,8 @@ function BenutzerTab({
   }, /*#__PURE__*/React.createElement("option", {
     value: "mitglied"
   }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
+    value: "strafenwart"
+  }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("button", {
     onClick: add,
@@ -807,6 +831,394 @@ function BenutzerTab({
   }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
 }
 
+// ── STRAFENKATALOG ───────────────────────────────────────────
+function StrafenTab({
+  benutzer,
+  spieler,
+  strafenEintraege,
+  toast
+}) {
+  const [katalog, setKatalog] = useState([]);
+  const [katalogLoading, setKatalogLoading] = useState(true);
+  const [gForm, setGForm] = useState({
+    grund: "",
+    betrag: ""
+  });
+  const [editK, setEditK] = useState(null);
+  const [gwSp, setGwSp] = useState(null);
+  useEffect(() => {
+    return col("strafenkatalog").onSnapshot(s => {
+      const l = s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (l.length === 0) STRAFEN_DEFAULT.forEach(st => col("strafenkatalog").add(st));
+      setKatalog(l);
+      setKatalogLoading(false);
+    });
+  }, []);
+  const addKatalog = async () => {
+    const b = parseFloat(gForm.betrag.replace(",", "."));
+    if (!gForm.grund.trim() || !b || b <= 0) return toast("Grund und Betrag erforderlich!");
+    await col("strafenkatalog").add({
+      grund: gForm.grund.trim(),
+      betrag: b
+    });
+    setGForm({
+      grund: "",
+      betrag: ""
+    });
+    toast("✅ Strafe zum Katalog hinzugefügt!");
+  };
+  const delKatalog = async id => {
+    await ref("strafenkatalog", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditK = async () => {
+    const b = parseFloat(String(editK.betrag).replace(",", "."));
+    if (!editK.grund.trim() || !b) return;
+    await ref("strafenkatalog", editK.id).set({
+      grund: editK.grund.trim(),
+      betrag: b
+    });
+    setEditK(null);
+    toast("✅ Gespeichert");
+  };
+  const verhaengen = async st => {
+    if (!gwSp) return toast("⚠️ Bitte erst Spieler auswählen!");
+    const sp = spieler.find(s => s.id === gwSp);
+    await col("strafen").add({
+      grund: st.grund,
+      betrag: st.betrag,
+      person: sp.name,
+      spielerId: sp.id,
+      datum: fmtD(todayStr()),
+      datumRaw: todayStr(),
+      zeit: new Date().toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      ts: Date.now()
+    });
+    toast(`⚖️ ${st.grund} (${st.betrag.toFixed(2)} €) für ${sp.name} verhängt!`);
+  };
+  const strafenSumme = strafenEintraege.reduce((s, e) => s + e.betrag, 0);
+  if (katalogLoading) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "⚖️ Strafenkatalog"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#7C2D12,#451A03)",
+      border: "2px solid #C2410C",
+      borderRadius: 15,
+      padding: "18px 16px",
+      marginBottom: 20,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#fdba74"
+    }
+  }, "Strafenkasse (separat)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      color: "#fb923c",
+      marginTop: 4
+    }
+  }, strafenSumme.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 34
+    }
+  }, "⚖️")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "👤 SPIELER WÄHLEN"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, spieler.map(sp => /*#__PURE__*/React.createElement("button", {
+    key: sp.id,
+    onClick: () => setGwSp(gwSp === sp.id ? null : sp.id),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "8px 14px",
+      borderRadius: 24,
+      cursor: "pointer",
+      border: `2px solid ${gwSp === sp.id ? pCol(sp.id) : "#003070"}`,
+      background: gwSp === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
+      color: gwSp === sp.id ? pCol(sp.id) : "#94a3b8",
+      fontWeight: gwSp === sp.id ? 800 : 500,
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: "50%",
+      background: pCol(sp.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 800,
+      color: "#001A3A"
+    }
+  }, ava(sp.name)), sp.name.split(" ")[0]))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "⚖️ STRAFE VERHÄNGEN"), katalog.map(st => /*#__PURE__*/React.createElement("div", {
+    key: st.id
+  }, editK?.id === st.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: editK.grund,
+    onChange: e => setEditK(x => ({
+      ...x,
+      grund: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editK.betrag,
+    onChange: e => setEditK(x => ({
+      ...x,
+      betrag: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditK,
+    style: {
+      padding: "0 12px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700,
+      height: 48
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditK(null),
+    style: {
+      padding: "0 10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer",
+      height: 48
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "12px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: gwSp ? "rgba(251,146,60,0.08)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${gwSp ? "#fb923c44" : "#003070"}`
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => verhaengen(st),
+    disabled: !gwSp,
+    style: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      color: gwSp ? "#e2e8f0" : "#475569",
+      cursor: gwSp ? "pointer" : "default",
+      padding: 0,
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, st.grund), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 800,
+      color: "#fb923c",
+      fontSize: 15
+    }
+  }, st.betrag.toFixed(2), " €")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditK(st),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delKatalog(st.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "🗑️")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(251,146,60,0.06)",
+      border: "1px solid #fb923c33",
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 20,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#fb923c",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neue Strafe zum Katalog"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Grund, z.B. Zu spät zum Training",
+    value: gForm.grund,
+    onChange: e => setGForm(f => ({
+      ...f,
+      grund: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "Betrag (€)",
+    value: gForm.betrag,
+    onChange: e => setGForm(f => ({
+      ...f,
+      betrag: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addKatalog,
+    style: {
+      width: "100%",
+      marginTop: 10,
+      padding: "12px",
+      background: "linear-gradient(135deg,#C2410C,#fb923c)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Zum Katalog hinzufügen")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      margin: "20px 0 10px"
+    }
+  }, "📋 Strafen-Verlauf"), strafenEintraege.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "📭 Noch keine Strafen verhängt") : [...strafenEintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    style: {
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #fb923c25",
+      borderLeft: "3px solid #fb923c",
+      borderRadius: 12,
+      padding: "12px 14px",
+      marginBottom: 9,
+      display: "flex",
+      alignItems: "center",
+      gap: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20
+    }
+  }, "⚖️"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, e.grund), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginTop: 2
+    }
+  }, "👤 ", e.person), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#475569",
+      marginTop: 2
+    }
+  }, "📅 ", e.datum, " • ", e.zeit)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 800,
+      color: "#fb923c"
+    }
+  }, "+", e.betrag.toFixed(2), " €"))));
+}
+
 // ── MAIN APP ──────────────────────────────────────────────────
 function MainApp({
   cu,
@@ -839,7 +1251,9 @@ function MainApp({
   const [editG, setEditG] = useState(null);
   const [vF, setVF] = useState("alle");
   const [vS, setVS] = useState("alle");
+  const [strafenEintraege, setStrafenEintraege] = useState([]);
   const isAdmin = cu.rolle === "admin";
+  const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const toast = msg => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2800);
@@ -848,7 +1262,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 4) setLoading(false);
+      if (n >= 5) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -880,11 +1294,19 @@ function MainApp({
       })));
       done();
     });
+    const u5 = col("strafen").onSnapshot(s => {
+      setStrafenEintraege(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
     return () => {
       u1();
       u2();
       u3();
       u4();
+      u5();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
@@ -1009,7 +1431,7 @@ function MainApp({
   const kasse = ein + spe + gSum - aus;
   const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS);
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -1071,12 +1493,12 @@ function MainApp({
       fontSize: 16,
       fontWeight: 800
     }
-  }, "3.HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       marginLeft: "auto",
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
@@ -2478,7 +2900,12 @@ function MainApp({
       fontSize: 12,
       cursor: "pointer"
     }
-  }, "🗑️"))))), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
+  }, "🗑️"))))), tab === "strafen" && isStrafenwart && /*#__PURE__*/React.createElement(StrafenTab, {
+    benutzer: benutzer,
+    spieler: spieler,
+    strafenEintraege: strafenEintraege,
+    toast: toast
+  }), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
     benutzer: benutzer,
     cu: cu,
     toast: toast
