@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3. HSG Emden Kasse</title>
+  <title>3.Herren HSG Emden Kasse</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -198,13 +198,13 @@ function Login({
       fontWeight: 800,
       marginBottom: 4
     }
-  }, "3. HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "3. Herren HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#94a3b8",
       marginBottom: 32
     }
-  }, "3. HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
+  }, "3. Herren HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
       maxWidth: 320,
@@ -836,7 +836,8 @@ function StrafenTab({
   benutzer,
   spieler,
   strafenEintraege,
-  toast
+  toast,
+  cu
 }) {
   const [katalog, setKatalog] = useState([]);
   const [katalogLoading, setKatalogLoading] = useState(true);
@@ -884,9 +885,17 @@ function StrafenTab({
     setEditK(null);
     toast("✅ Gespeichert");
   };
+
+  // Nur Spieler der eigenen Mannschaft anzeigen
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const eigeneSpieler = spieler.filter(sp => {
+    const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+    return bu && (bu.mannschaft || "1. Herren") === meineMannschaft;
+  });
   const verhaengen = async st => {
     if (!gwSp) return toast("⚠️ Bitte erst Spieler auswählen!");
-    const sp = spieler.find(s => s.id === gwSp);
+    const sp = eigeneSpieler.find(s => s.id === gwSp);
+    if (!sp) return toast("⚠️ Spieler gehört nicht zu deiner Mannschaft!");
     await col("strafen").add({
       grund: st.grund,
       betrag: st.betrag,
@@ -919,10 +928,12 @@ function StrafenTab({
     await ref("strafen", id).delete();
     toast("🗑️ Strafe gelöscht");
   };
+  const eigeneSpielerIds = new Set(eigeneSpieler.map(sp => sp.id));
+  const strafenEigeneMannschaft = strafenEintraege.filter(e => eigeneSpielerIds.has(e.spielerId));
   const [vFilter, setVFilter] = useState("alle");
-  const gefilterteStrafen = [...strafenEintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0)).filter(e => vFilter === "alle" || (vFilter === "bezahlt" ? e.bezahlt : !e.bezahlt));
-  const bezahlteStrafen = strafenEintraege.filter(e => e.bezahlt);
-  const offeneStrafen = strafenEintraege.filter(e => !e.bezahlt);
+  const gefilterteStrafen = [...strafenEigeneMannschaft].sort((a, b) => (b.ts || 0) - (a.ts || 0)).filter(e => vFilter === "alle" || (vFilter === "bezahlt" ? e.bezahlt : !e.bezahlt));
+  const bezahlteStrafen = strafenEigeneMannschaft.filter(e => e.bezahlt);
+  const offeneStrafen = strafenEigeneMannschaft.filter(e => !e.bezahlt);
   const summeBezahlt = bezahlteStrafen.reduce((s, e) => s + e.betrag, 0);
   const summeOffen = offeneStrafen.reduce((s, e) => s + e.betrag, 0);
   if (katalogLoading) return null;
@@ -991,14 +1002,22 @@ function StrafenTab({
       fontWeight: 700,
       marginBottom: 10
     }
-  }, "👤 SPIELER WÄHLEN"), /*#__PURE__*/React.createElement("div", {
+  }, "👤 SPIELER WÄHLEN — ", meineMannschaft), eigeneSpieler.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "20px 0",
+      marginBottom: 12,
+      fontSize: 13
+    }
+  }, "Keine Spieler in deiner Mannschaft (", meineMannschaft, ") gefunden.") : /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexWrap: "wrap",
       gap: 8,
       marginBottom: 20
     }
-  }, spieler.map(sp => /*#__PURE__*/React.createElement("button", {
+  }, eigeneSpieler.map(sp => /*#__PURE__*/React.createElement("button", {
     key: sp.id,
     onClick: () => setGwSp(gwSp === sp.id ? null : sp.id),
     style: {
@@ -1598,7 +1617,7 @@ function MainApp({
       fontSize: 16,
       fontWeight: 800
     }
-  }, "3. HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "3. Herren HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#93c5fd"
@@ -3009,7 +3028,8 @@ function MainApp({
     benutzer: benutzer,
     spieler: spieler,
     strafenEintraege: strafenEintraege,
-    toast: toast
+    toast: toast,
+    cu: cu
   }), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
     benutzer: benutzer,
     cu: cu,
