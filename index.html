@@ -971,6 +971,23 @@ function StrafenTab({
   const summeOffen = offeneStrafen.reduce((s, e) => s + e.betrag, 0);
   const ZWEI_WOCHEN_MS_TOP = 14 * 24 * 60 * 60 * 1000;
   const ueberfaelligeStrafen = offeneStrafen.filter(e => e.ts && Date.now() - e.ts > ZWEI_WOCHEN_MS_TOP);
+  const exportiereOffeneStrafen = async () => {
+    if (offeneStrafen.length === 0) return toast("✅ Keine offenen Strafen vorhanden!");
+    const sortiert = [...offeneStrafen].sort((a, b) => (a.person || "").localeCompare(b.person || ""));
+    let text = `⚖️ Offene Strafen — ${meineMannschaft}\n`;
+    text += `Stand: ${new Date().toLocaleDateString("de-DE")}\n\n`;
+    sortiert.forEach(e => {
+      const ueberf = e.ts && Date.now() - e.ts > ZWEI_WOCHEN_MS_TOP;
+      text += `${ueberf ? "⚠️ " : "• "}${e.person}: ${e.grund} — ${e.betrag.toFixed(2)} €\n`;
+    });
+    text += `\n💰 Summe offen: ${summeOffen.toFixed(2)} €`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("✅ In Zwischenablage kopiert! Jetzt z.B. bei WhatsApp einfügen.");
+    } catch {
+      toast("⚠️ Kopieren fehlgeschlagen — bitte manuell markieren.");
+    }
+  };
   if (katalogLoading) return null;
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1057,7 +1074,25 @@ function StrafenTab({
       color: "#fca5a5",
       marginTop: 2
     }
-  }, "Bitte bei den betroffenen Spielern nachfragen"))), /*#__PURE__*/React.createElement("div", {
+  }, "Bitte bei den betroffenen Spielern nachfragen"))), /*#__PURE__*/React.createElement("button", {
+    onClick: exportiereOffeneStrafen,
+    style: {
+      width: "100%",
+      padding: "12px",
+      marginBottom: 20,
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid #003070",
+      borderRadius: 12,
+      color: "#94a3b8",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, "📋 Offene Strafen als Text exportieren"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#94a3b8",
@@ -2331,6 +2366,13 @@ function MainApp({
     const lieblings = Object.entries(gCount).sort((a, b) => b[1] - a[1])[0];
     const perGut = meineG.filter(e => e.zahlart === "guthaben").length;
     const perDir = meineG.filter(e => e.zahlart === "direkt").length;
+    // Zusage-Quote: nur vergangene Trainings der eigenen Mannschaft, bei denen reagiert wurde
+    const meinSpielerObj = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
+    const heuteStr = todayStr();
+    const meineTrainings = termine.filter(t => t.typ === "training" && (t.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren") && t.datum < heuteStr);
+    const trainingsMitReaktion = meinSpielerObj ? meineTrainings.filter(t => (t.zusagen || []).includes(meinSpielerObj.name) || (t.absagen || []).includes(meinSpielerObj.name)) : [];
+    const trainingsZugesagt = meinSpielerObj ? meineTrainings.filter(t => (t.zusagen || []).includes(meinSpielerObj.name)) : [];
+    const zusageQuote = trainingsMitReaktion.length > 0 ? Math.round(trainingsZugesagt.length / trainingsMitReaktion.length * 100) : null;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         padding: 20
@@ -2539,7 +2581,42 @@ function MainApp({
         fontSize: 12,
         color: "#64748b"
       }
-    }, lieblings[1], "× bestellt"))), meinGut <= 2 && /*#__PURE__*/React.createElement("div", {
+    }, lieblings[1], "× bestellt"))), zusageQuote !== null && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(74,222,128,0.08)",
+        border: "1px solid #4ade8030",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 32
+      }
+    }, "🏃"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8"
+      }
+    }, "Trainings-Zusage-Quote"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 800,
+        color: zusageQuote >= 70 ? "#4ade80" : zusageQuote >= 40 ? "#fb923c" : "#f87171"
+      }
+    }, "Du warst bei ", zusageQuote, "% der Trainings dabei"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#64748b"
+      }
+    }, trainingsZugesagt.length, " von ", trainingsMitReaktion.length, " beantworteten Trainings"))), meinGut <= 2 && /*#__PURE__*/React.createElement("div", {
       style: {
         background: "rgba(248,113,113,0.1)",
         border: "1px solid rgba(248,113,113,0.3)",
@@ -3896,7 +3973,51 @@ function MainApp({
     }
   }, toastMsg));
 }
+function useOnline() {
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return online;
+}
+function OfflineBanner() {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 200,
+      background: "linear-gradient(135deg,#7C2D12,#451A03)",
+      borderBottom: "2px solid #f87171",
+      padding: "10px 16px",
+      textAlign: "center",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "📡"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#fca5a5",
+      fontSize: 13,
+      fontWeight: 700
+    }
+  }, "Keine Internetverbindung — Daten werden synchronisiert, sobald du wieder online bist"));
+}
 function App() {
+  const online = useOnline();
   const [cu, setCu] = useState(() => ld(AUTH_KEY, null));
   const [benutzer, setBenutzer] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3939,20 +4060,19 @@ function App() {
       fontSize: 36
     }
   }, "🤾"));
-  if (!cu) return /*#__PURE__*/React.createElement(Login, {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, !online && /*#__PURE__*/React.createElement(OfflineBanner, null), !cu ? /*#__PURE__*/React.createElement(Login, {
     onLogin: u => {
       sv(AUTH_KEY, u);
       setCu(u);
     },
     benutzer: benutzer
-  });
-  return /*#__PURE__*/React.createElement(MainApp, {
+  }) : /*#__PURE__*/React.createElement(MainApp, {
     cu: cu,
     onLogout: () => {
       sv(AUTH_KEY, null);
       setCu(null);
     }
-  });
+  }));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
 
