@@ -1991,6 +1991,9 @@ function MainApp({
     datum: todayStr()
   });
   const [nName, setNName] = useState("");
+  const [guthabenOffen, setGuthabenOffen] = useState(true);
+  const [topTrinkerOffen, setTopTrinkerOffen] = useState(true);
+  const [spielerListeOffen, setSpielerListeOffen] = useState(true);
   const [editSp, setEditSp] = useState(null);
   const [gForm, setGForm] = useState({
     name: "",
@@ -3320,16 +3323,35 @@ function MainApp({
     style: {
       fontSize: 34
     }
-  }, kasse >= 0 ? "✅" : "⚠️")), benutzer.filter(b => b.rolle !== "admin").length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, kasse >= 0 ? "✅" : "⚠️")), benutzer.filter(b => b.rolle !== "admin").length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setGuthabenOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      margin: "20px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#94a3b8",
       fontWeight: 700,
       letterSpacing: 1,
-      textTransform: "uppercase",
-      margin: "20px 0 10px"
+      textTransform: "uppercase"
     }
-  }, "💰 Guthaben Übersicht"), benutzer.filter(b => b.rolle !== "admin").sort((a, b) => (b.guthaben || 0) - (a.guthaben || 0)).map(b => /*#__PURE__*/React.createElement("div", {
+  }, "💰 Guthaben Übersicht"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: guthabenOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), guthabenOffen && benutzer.filter(b => b.rolle !== "admin").sort((a, b) => (b.guthaben || 0) - (a.guthaben || 0)).map(b => /*#__PURE__*/React.createElement("div", {
     key: b.id,
     style: {
       display: "flex",
@@ -3374,16 +3396,35 @@ function MainApp({
       color: (b.guthaben || 0) > 0 ? "#4ade80" : "#f87171",
       fontSize: 15
     }
-  }, (b.guthaben || 0).toFixed(2), " €")))), spieler.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, (b.guthaben || 0).toFixed(2), " €")))), spieler.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTopTrinkerOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      margin: "20px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#94a3b8",
       fontWeight: 700,
       letterSpacing: 1,
-      textTransform: "uppercase",
-      margin: "20px 0 10px"
+      textTransform: "uppercase"
     }
-  }, "🏆 Top-Trinker"), spieler.map(sp => {
+  }, "🏆 Top-Trinker"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: topTrinkerOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), topTrinkerOffen && spieler.map(sp => {
     const s = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id).reduce((x, e) => x + e.betrag, 0);
     const a = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id).length;
     return {
@@ -3444,16 +3485,35 @@ function MainApp({
     style: {
       padding: 20
     }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSpielerListeOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      marginBottom: 14
+    }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#94a3b8",
       fontWeight: 700,
       letterSpacing: 1,
-      textTransform: "uppercase",
-      marginBottom: 14
+      textTransform: "uppercase"
     }
   }, "👥 Spieler verwalten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: spielerListeOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -3483,7 +3543,7 @@ function MainApp({
       cursor: "pointer",
       flexShrink: 0
     }
-  }, "+")), spieler.map(sp => /*#__PURE__*/React.createElement("div", {
+  }, "+")), spielerListeOffen && spieler.map(sp => /*#__PURE__*/React.createElement("div", {
     key: sp.id
   }, editSp?.id === sp.id ? /*#__PURE__*/React.createElement("div", {
     style: {
