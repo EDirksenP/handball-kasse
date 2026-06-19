@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3. Herren HSG Emden Kasse</title>
+  <title>3.HSG Emden Kasse</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -78,6 +78,28 @@ const STRAFEN_DEFAULT = [{
   grund: "Unentschuldigt gefehlt",
   betrag: 10.00
 }];
+const TERMIN_TYPEN = {
+  training: {
+    label: "Training",
+    emoji: "🏃",
+    color: "#2288FF"
+  },
+  punktspiel: {
+    label: "Punktspiel",
+    emoji: "🏆",
+    color: "#f87171"
+  },
+  mannschaftsabend: {
+    label: "Mannschaftsabend",
+    emoji: "🍻",
+    color: "#fb923c"
+  },
+  sonstiges: {
+    label: "Sonstiges",
+    emoji: "📌",
+    color: "#a78bfa"
+  }
+};
 const CATS = {
   getraenk: {
     label: "Getränk",
@@ -198,13 +220,13 @@ function Login({
       fontWeight: 800,
       marginBottom: 4
     }
-  }, "3. Herren HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "3.HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#94a3b8",
       marginBottom: 32
     }
-  }, "3. Herren HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
+  }, "3.HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
     style: {
       width: "100%",
       maxWidth: 320,
@@ -445,6 +467,8 @@ function BenutzerTab({
   }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
     value: "strafenwart"
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
+    value: "eventorga"
+  }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -525,7 +549,14 @@ function BenutzerTab({
       fontWeight: 700,
       marginTop: 2
     }
-  }, "⚖️ Strafenwart"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, "⚖️ Strafenwart"), b.rolle === "eventorga" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#a78bfa",
+      fontWeight: 700,
+      marginTop: 2
+    }
+  }, "📅 Eventorganisation"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -794,6 +825,8 @@ function BenutzerTab({
   }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
     value: "strafenwart"
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
+    value: "eventorga"
+  }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("button", {
     onClick: add,
@@ -1377,6 +1410,564 @@ function StrafenTab({
   }));
 }
 
+// ── TERMINE ──────────────────────────────────────────────────
+function TermineTab({
+  benutzer,
+  spieler,
+  termine,
+  toast,
+  cu,
+  kannBearbeiten
+}) {
+  const [form, setForm] = useState({
+    typ: "training",
+    titel: "",
+    ort: "",
+    datum: todayStr(),
+    uhrzeit: "18:00"
+  });
+  const [editT, setEditT] = useState(null);
+  const [zeigeForm, setZeigeForm] = useState(false);
+
+  // Nur Termine der eigenen Mannschaft
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const eigeneTermine = termine.filter(t => (t.mannschaft || "1. Herren") === meineMannschaft);
+  const meinSpieler = spieler.find(sp => sp.name === cu.vorname + " " + cu.nachname);
+  const addTermin = async () => {
+    if (!form.titel.trim()) return toast("⚠️ Bitte einen Titel angeben!");
+    if (!form.ort.trim()) return toast("⚠️ Bitte einen Ort angeben!");
+    await col("termine").add({
+      typ: form.typ,
+      titel: form.titel.trim(),
+      ort: form.ort.trim(),
+      datum: form.datum,
+      uhrzeit: form.uhrzeit,
+      mannschaft: meineMannschaft,
+      zusagen: [],
+      absagen: [],
+      ts: Date.now()
+    });
+    setForm({
+      typ: "training",
+      titel: "",
+      ort: "",
+      datum: todayStr(),
+      uhrzeit: "18:00"
+    });
+    setZeigeForm(false);
+    toast("✅ Termin angelegt!");
+  };
+  const saveEditT = async () => {
+    if (!editT.titel.trim() || !editT.ort.trim()) return toast("⚠️ Titel und Ort erforderlich!");
+    await ref("termine", editT.id).set({
+      typ: editT.typ,
+      titel: editT.titel.trim(),
+      ort: editT.ort.trim(),
+      datum: editT.datum,
+      uhrzeit: editT.uhrzeit,
+      mannschaft: editT.mannschaft || meineMannschaft,
+      zusagen: editT.zusagen || [],
+      absagen: editT.absagen || [],
+      ts: editT.ts
+    });
+    setEditT(null);
+    toast("✅ Gespeichert");
+  };
+  const loeschenTermin = async id => {
+    await ref("termine", id).delete();
+    toast("🗑️ Termin gelöscht");
+  };
+  const reagieren = async (termin, status) => {
+    if (!meinSpieler) return toast("⚠️ Kein Spieler-Profil gefunden!");
+    const name = meinSpieler.name;
+    let zusagen = (termin.zusagen || []).filter(n => n !== name);
+    let absagen = (termin.absagen || []).filter(n => n !== name);
+    if (status === "zusage") zusagen.push(name);
+    if (status === "absage") absagen.push(name);
+    await ref("termine", termin.id).update({
+      zusagen,
+      absagen
+    });
+    toast(status === "zusage" ? "✅ Zugesagt!" : "❌ Abgesagt!");
+  };
+  const meinStatus = termin => {
+    if (!meinSpieler) return null;
+    if ((termin.zusagen || []).includes(meinSpieler.name)) return "zusage";
+    if ((termin.absagen || []).includes(meinSpieler.name)) return "absage";
+    return null;
+  };
+  const sortierteTermine = [...eigeneTermine].sort((a, b) => {
+    const da = new Date(a.datum + "T" + (a.uhrzeit || "00:00"));
+    const db = new Date(b.datum + "T" + (b.uhrzeit || "00:00"));
+    return da - db;
+  });
+  const heute = todayStr();
+  const kommendeTermine = sortierteTermine.filter(t => t.datum >= heute);
+  const vergangeneTermine = sortierteTermine.filter(t => t.datum < heute).reverse();
+  const [zeigeVergangene, setZeigeVergangene] = useState(false);
+  const terminCard = t => {
+    const typInfo = TERMIN_TYPEN[t.typ] || TERMIN_TYPEN.sonstiges;
+    const status = meinStatus(t);
+    const anzZusagen = (t.zusagen || []).length;
+    const anzAbsagen = (t.absagen || []).length;
+    return /*#__PURE__*/React.createElement("div", {
+      key: t.id
+    }, editT?.id === t.id ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid #003070",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        marginBottom: 10,
+        flexWrap: "wrap"
+      }
+    }, Object.entries(TERMIN_TYPEN).map(([key, info]) => /*#__PURE__*/React.createElement("button", {
+      key: key,
+      onClick: () => setEditT(x => ({
+        ...x,
+        typ: key
+      })),
+      style: {
+        padding: "6px 10px",
+        borderRadius: 8,
+        cursor: "pointer",
+        border: `2px solid ${editT.typ === key ? info.color : "#003070"}`,
+        background: editT.typ === key ? `${info.color}22` : "rgba(255,255,255,0.03)",
+        color: editT.typ === key ? info.color : "#94a3b8",
+        fontSize: 11,
+        fontWeight: 700
+      }
+    }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("input", {
+      value: editT.titel,
+      onChange: e => setEditT(x => ({
+        ...x,
+        titel: e.target.value
+      })),
+      placeholder: "Titel",
+      style: {
+        ...IS,
+        marginTop: 0,
+        marginBottom: 8
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      value: editT.ort,
+      onChange: e => setEditT(x => ({
+        ...x,
+        ort: e.target.value
+      })),
+      placeholder: "Ort",
+      style: {
+        ...IS,
+        marginTop: 0,
+        marginBottom: 8
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "date",
+      value: editT.datum,
+      onChange: e => setEditT(x => ({
+        ...x,
+        datum: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: editT.uhrzeit,
+      onChange: e => setEditT(x => ({
+        ...x,
+        uhrzeit: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: saveEditT,
+      style: {
+        flex: 1,
+        padding: "10px",
+        background: "#4ade8022",
+        border: "1px solid #4ade80",
+        color: "#4ade80",
+        borderRadius: 10,
+        cursor: "pointer",
+        fontWeight: 700
+      }
+    }, "✓ Speichern"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditT(null),
+      style: {
+        padding: "10px 14px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid #003070",
+        color: "#94a3b8",
+        borderRadius: 10,
+        cursor: "pointer"
+      }
+    }, "✕"))) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${typInfo.color}30`,
+        borderLeft: `3px solid ${typInfo.color}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24
+      }
+    }, typInfo.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: typInfo.color,
+        fontWeight: 700,
+        marginBottom: 2
+      }
+    }, typInfo.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 15
+      }
+    }, t.titel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 4
+      }
+    }, "📅 ", fmtD(t.datum), " • 🕐 ", t.uhrzeit, " Uhr"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 2
+      }
+    }, "📍 ", t.ort)), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 5
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditT(t),
+      style: {
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.3)",
+        color: "#2288FF",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => loeschenTermin(t.id),
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        color: "#f87171",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "🗑️"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginTop: 12
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => reagieren(t, "zusage"),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "zusage" ? "#4ade80" : "#003070"}`,
+        background: status === "zusage" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "zusage" ? "#4ade80" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 13
+      }
+    }, "✅ Zusage"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => reagieren(t, "absage"),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "absage" ? "#f87171" : "#003070"}`,
+        background: status === "absage" ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "absage" ? "#f87171" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 13
+      }
+    }, "❌ Absage")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 14,
+        marginTop: 10,
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " ", anzZusagen === 1 ? "Zusage" : "Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " ", anzAbsagen === 1 ? "Absage" : "Absagen")), (anzZusagen > 0 || anzAbsagen > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, anzZusagen > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#4ade80"
+      }
+    }, "✅"), " ", (t.zusagen || []).join(", ")), anzAbsagen > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#f87171"
+      }
+    }, "❌"), " ", (t.absagen || []).join(", ")))));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "📅 Termine — ", meineMannschaft), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 20
+    }
+  }, !zeigeForm ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(true),
+    style: {
+      width: "100%",
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "➕ Neuen Termin anlegen") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(34,136,255,0.06)",
+      border: "1px solid #2288FF33",
+      borderRadius: 14,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neuer Termin"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 10,
+      flexWrap: "wrap"
+    }
+  }, Object.entries(TERMIN_TYPEN).map(([key, info]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => setForm(f => ({
+      ...f,
+      typ: key
+    })),
+    style: {
+      padding: "8px 12px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${form.typ === key ? info.color : "#003070"}`,
+      background: form.typ === key ? `${info.color}22` : "rgba(255,255,255,0.03)",
+      color: form.typ === key ? info.color : "#94a3b8",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "TITEL"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Training, Heimspiel gegen...",
+    value: form.titel,
+    onChange: e => setForm(f => ({
+      ...f,
+      titel: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "ORT"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Sporthalle Süd",
+    value: form.ort,
+    onChange: e => setForm(f => ({
+      ...f,
+      ort: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "DATUM"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: form.datum,
+    onChange: e => setForm(f => ({
+      ...f,
+      datum: e.target.value
+    })),
+    style: IS
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "UHRZEIT"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: form.uhrzeit,
+    onChange: e => setForm(f => ({
+      ...f,
+      uhrzeit: e.target.value
+    })),
+    style: IS
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: addTermin,
+    style: {
+      flex: 1,
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Termin anlegen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(false),
+    style: {
+      padding: "12px 16px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 10
+    }
+  }, "🔜 Kommende Termine"), kommendeTermine.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "📭 Keine kommenden Termine") : kommendeTermine.map(t => terminCard(t)), vergangeneTermine.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeVergangene(v => !v),
+    style: {
+      width: "100%",
+      padding: "10px",
+      marginTop: 10,
+      marginBottom: 10,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #003070",
+      borderRadius: 10,
+      color: "#94a3b8",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, zeigeVergangene ? "▲ Vergangene Termine ausblenden" : `▼ Vergangene Termine anzeigen (${vergangeneTermine.length})`), zeigeVergangene && vergangeneTermine.map(t => terminCard(t))));
+}
+
 // ── MAIN APP ──────────────────────────────────────────────────
 function MainApp({
   cu,
@@ -1410,8 +2001,10 @@ function MainApp({
   const [vF, setVF] = useState("alle");
   const [vS, setVS] = useState("alle");
   const [strafenEintraege, setStrafenEintraege] = useState([]);
+  const [termine, setTermine] = useState([]);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
+  const isEventorga = cu.rolle === "eventorga" || isAdmin;
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -1441,7 +2034,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 5) setLoading(false);
+      if (n >= 6) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -1480,12 +2073,20 @@ function MainApp({
       })));
       done();
     });
+    const u6 = col("termine").onSnapshot(s => {
+      setTermine(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
     return () => {
       u1();
       u2();
       u3();
       u4();
       u5();
+      u6();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
@@ -1610,7 +2211,7 @@ function MainApp({
   const kasse = ein + spe + gSum - aus;
   const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS);
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["termine", "📅", "Termine"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -1672,12 +2273,12 @@ function MainApp({
       fontSize: 16,
       fontWeight: 800
     }
-  }, "3. Herren HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
+  }, "3.HSG Emden Kasse"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       marginLeft: "auto",
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
@@ -3160,7 +3761,14 @@ function MainApp({
       fontSize: 12,
       cursor: "pointer"
     }
-  }, "🗑️"))))), tab === "strafen" && isStrafenwart && /*#__PURE__*/React.createElement(StrafenTab, {
+  }, "🗑️"))))), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
+    benutzer: benutzer,
+    spieler: spieler,
+    termine: termine,
+    toast: toast,
+    cu: cu,
+    kannBearbeiten: isEventorga
+  }), tab === "strafen" && isStrafenwart && /*#__PURE__*/React.createElement(StrafenTab, {
     benutzer: benutzer,
     spieler: spieler,
     strafenEintraege: strafenEintraege,
