@@ -1463,11 +1463,18 @@ function TermineTab({
   });
   const [editT, setEditT] = useState(null);
   const [zeigeForm, setZeigeForm] = useState(false);
+  const [offenAdminVote, setOffenAdminVote] = useState(null);
 
   // Nur Termine der eigenen Mannschaft
   const meineMannschaft = cu.mannschaft || "1. Herren";
   const eigeneTermine = termine.filter(t => (t.mannschaft || "1. Herren") === meineMannschaft);
   const meinSpieler = spieler.find(sp => sp.name === cu.vorname + " " + cu.nachname);
+
+  // Alle Spieler der eigenen Mannschaft (für "wer hat nicht abgestimmt" + Admin-Abstimmung)
+  const eigeneSpieler = spieler.filter(sp => {
+    const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+    return bu && (bu.mannschaft || "1. Herren") === meineMannschaft;
+  });
   const addTermin = async () => {
     if (!form.titel.trim()) return toast("⚠️ Bitte einen Titel angeben!");
     if (!form.ort.trim()) return toast("⚠️ Bitte einen Ort angeben!");
@@ -1512,9 +1519,10 @@ function TermineTab({
     await ref("termine", id).delete();
     toast("🗑️ Termin gelöscht");
   };
-  const reagieren = async (termin, status) => {
-    if (!meinSpieler) return toast("⚠️ Kein Spieler-Profil gefunden!");
-    const name = meinSpieler.name;
+  const reagieren = async (termin, status, spielerName) => {
+    const name = spielerName || meinSpieler?.name;
+    if (!name) return toast("⚠️ Kein Spieler-Profil gefunden!");
+    if (spielerName && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
     let zusagen = (termin.zusagen || []).filter(n => n !== name);
     let absagen = (termin.absagen || []).filter(n => n !== name);
     if (status === "zusage") zusagen.push(name);
@@ -1523,7 +1531,12 @@ function TermineTab({
       zusagen,
       absagen
     });
-    toast(status === "zusage" ? "✅ Zugesagt!" : "❌ Abgesagt!");
+    toast(status === "zusage" ? `✅ ${name} zugesagt!` : `❌ ${name} abgesagt!`);
+  };
+  const statusVon = (termin, name) => {
+    if ((termin.zusagen || []).includes(name)) return "zusage";
+    if ((termin.absagen || []).includes(name)) return "absage";
+    return null;
   };
   const meinStatus = termin => {
     if (!meinSpieler) return null;
@@ -1545,6 +1558,7 @@ function TermineTab({
     const status = meinStatus(t);
     const anzZusagen = (t.zusagen || []).length;
     const anzAbsagen = (t.absagen || []).length;
+    const nichtAbgestimmt = eigeneSpieler.filter(sp => !(t.zusagen || []).includes(sp.name) && !(t.absagen || []).includes(sp.name));
     return /*#__PURE__*/React.createElement("div", {
       key: t.id
     }, editT?.id === t.id ? /*#__PURE__*/React.createElement("div", {
@@ -1775,7 +1789,7 @@ function TermineTab({
         fontSize: 11,
         color: "#64748b"
       }
-    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " ", anzZusagen === 1 ? "Zusage" : "Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " ", anzAbsagen === 1 ? "Absage" : "Absagen")), (anzZusagen > 0 || anzAbsagen > 0) && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " ", anzZusagen === 1 ? "Zusage" : "Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " ", anzAbsagen === 1 ? "Absage" : "Absagen"), /*#__PURE__*/React.createElement("span", null, "⏳ ", nichtAbgestimmt.length, " offen")), (anzZusagen > 0 || anzAbsagen > 0) && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 8,
         paddingTop: 8,
@@ -1795,7 +1809,106 @@ function TermineTab({
       style: {
         color: "#f87171"
       }
-    }, "❌"), " ", (t.absagen || []).join(", ")))));
+    }, "❌"), " ", (t.absagen || []).join(", "))), nichtAbgestimmt.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6,
+        fontSize: 11,
+        color: "#fb923c"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTop: "1px solid rgba(255,255,255,0.08)"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setOffenAdminVote(offenAdminVote === t.id ? null : t.id),
+      style: {
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        fontWeight: 700
+      }
+    }, "👤 Für Spieler abstimmen"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        transform: offenAdminVote === t.id ? "rotate(0deg)" : "rotate(-90deg)",
+        transition: "transform 0.2s"
+      }
+    }, "▼")), offenAdminVote === t.id && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6
+      }
+    }, eigeneSpieler.map(sp => {
+      const spStatus = statusVon(t, sp.name);
+      return /*#__PURE__*/React.createElement("div", {
+        key: sp.id,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 10px",
+          borderRadius: 8,
+          background: "rgba(255,255,255,0.03)"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          background: pCol(sp.id),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          fontWeight: 800,
+          color: "#001A3A",
+          flexShrink: 0
+        }
+      }, ava(sp.name)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          fontSize: 12,
+          fontWeight: 600
+        }
+      }, sp.name), /*#__PURE__*/React.createElement("button", {
+        onClick: () => reagieren(t, "zusage", sp.name),
+        style: {
+          padding: "4px 8px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "zusage" ? "#4ade80" : "#003070"}`,
+          background: spStatus === "zusage" ? "rgba(74,222,128,0.2)" : "transparent",
+          color: spStatus === "zusage" ? "#4ade80" : "#64748b",
+          fontSize: 13
+        }
+      }, "✅"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => reagieren(t, "absage", sp.name),
+        style: {
+          padding: "4px 8px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "absage" ? "#f87171" : "#003070"}`,
+          background: spStatus === "absage" ? "rgba(248,113,113,0.2)" : "transparent",
+          color: spStatus === "absage" ? "#f87171" : "#64748b",
+          fontSize: 13
+        }
+      }, "❌"));
+    })))));
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
