@@ -164,6 +164,7 @@ function Login({
   const [p, setP] = useState("");
   const [err, setErr] = useState("");
   const [shake, setShake] = useState(false);
+  const [zeigeImpressum, setZeigeImpressum] = useState(false);
   const go = () => {
     const b = benutzer.find(x => x.benutzername === u.trim().toLowerCase());
     if (!b) {
@@ -300,7 +301,81 @@ function Login({
       fontSize: 12,
       color: "#334155"
     }
-  }, "🔒 Geschützte Vereinskasse"));
+  }, "🔒 Geschützte Vereinskasse"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeImpressum(true),
+    style: {
+      marginTop: 14,
+      background: "none",
+      border: "none",
+      color: "#334155",
+      fontSize: 11,
+      textDecoration: "underline",
+      cursor: "pointer"
+    }
+  }, "Impressum & Kontakt"), zeigeImpressum && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setZeigeImpressum(false),
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: "#001A3A",
+      border: "2px solid #0055AA",
+      borderRadius: 16,
+      padding: 24,
+      width: "100%",
+      maxWidth: 360
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 14
+    }
+  }, "📄 Impressum & Kontakt"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8",
+      lineHeight: 1.7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: "#e2e8f0",
+      marginBottom: 2
+    }
+  }, "Verantwortlich für diese App:"), /*#__PURE__*/React.createElement("div", null, "Eike Dirksen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, "📧 eike.dirksen@gmail.com"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, "Diese App ist ein privates, nicht-kommerzielles Projekt zur internen Verwaltung der Getränke- und Strafenkasse der 3. Herren der HSG Emden. Sie steht ausschließlich Mannschaftsmitgliedern zur Verfügung.")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeImpressum(false),
+    style: {
+      width: "100%",
+      marginTop: 18,
+      padding: "10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      borderRadius: 10,
+      color: "#94a3b8",
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, "Schließen"))));
 }
 
 // ── BENUTZERVERWALTUNG ────────────────────────────────────────
