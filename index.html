@@ -10,32 +10,11 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    :root{
-      --bg-main:linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%);
-      --bg-header:linear-gradient(135deg,#003F8A 0%,#001F50 100%);
-      --bg-card:rgba(255,255,255,0.03);
-      --bg-nav:rgba(0,17,46,0.97);
-      --text-main:#e2e8f0;
-      --text-secondary:#94a3b8;
-      --border-main:#003070;
-      --scrollbar:#003070;
-    }
-    body.light-mode{
-      --bg-main:linear-gradient(160deg,#eef3fb 0%,#f7faff 50%,#eef3fb 100%);
-      --bg-header:linear-gradient(135deg,#1565C0 0%,#0D47A1 100%);
-      --bg-card:rgba(13,71,161,0.05);
-      --bg-nav:rgba(255,255,255,0.97);
-      --text-main:#0f1f3d;
-      --text-secondary:#4a5d7a;
-      --border-main:#c7d7f0;
-      --scrollbar:#c7d7f0;
-    }
-    body{background:var(--bg-main);font-family:'Segoe UI',system-ui,sans-serif;transition:background 0.2s;}
+    body{background:#00112E;font-family:'Segoe UI',system-ui,sans-serif;}
     input,select,button{font-family:inherit;}
     input[type=date]{color-scheme:dark;}
-    body.light-mode input[type=date]{color-scheme:light;}
     ::-webkit-scrollbar{width:4px;}
-    ::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:2px;}
+    ::-webkit-scrollbar-thumb{background:#003070;border-radius:2px;}
     @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
   </style>
 </head>
@@ -175,28 +154,6 @@ const IS = {
   outline: "none",
   boxSizing: "border-box"
 };
-const THEME_KEY = "hsg_theme_v1";
-function useTheme() {
-  const [dark, setDark] = useState(() => {
-    const saved = ld(THEME_KEY, null);
-    return saved === null ? true : saved;
-  });
-  useEffect(() => {
-    sv(THEME_KEY, dark);
-  }, [dark]);
-  return [dark, setDark];
-}
-function themeVals(dark) {
-  return dark ? {
-    bg: "linear-gradient(160deg,#00112E,#001A3A)",
-    text: "#e2e8f0",
-    header: "linear-gradient(135deg,#003F8A,#001F50)"
-  } : {
-    bg: "linear-gradient(160deg,#eef4ff,#f8fbff)",
-    text: "#0f172a",
-    header: "linear-gradient(135deg,#2288FF,#0066CC)"
-  };
-}
 
 // ── LOGIN ─────────────────────────────────────────────────────
 function Login({
@@ -2414,8 +2371,6 @@ function MainApp({
   const [vS, setVS] = useState("alle");
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
-  const [dark, setDark] = useTheme();
-  const T = themeVals(dark);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const isEventorga = cu.rolle === "eventorga" || isAdmin;
@@ -2629,7 +2584,7 @@ function MainApp({
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
-      background: "var(--bg-main)",
+      background: "#00112E",
       display: "flex",
       alignItems: "center",
       justifyContent: "center"
@@ -2649,15 +2604,15 @@ function MainApp({
   return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
-      background: "var(--bg-main)",
-      color: "var(--text-main)",
+      background: "linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
+      color: "#e2e8f0",
       maxWidth: 480,
       margin: "0 auto",
       position: "relative"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      background: "var(--bg-header)",
+      background: "linear-gradient(135deg,#003F8A 0%,#001F50 100%)",
       padding: "14px 20px",
       borderBottom: "2px solid #0055AA",
       position: "sticky",
@@ -2693,19 +2648,7 @@ function MainApp({
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setDark(d => !d),
-    style: {
-      marginLeft: "auto",
-      background: "rgba(255,255,255,0.12)",
-      border: "none",
-      borderRadius: 9,
-      padding: "7px 9px",
-      fontSize: 14,
-      cursor: "pointer",
-      flexShrink: 0
-    }
-  }, dark ? "☀️" : "🌙"), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
       border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
@@ -2724,7 +2667,7 @@ function MainApp({
       fontWeight: 800,
       color: kasse >= 0 ? "#4ade80" : "#f87171"
     }
-  }, kasse.toFixed(2), " €")), /*#__PURE__*/React.createElement(ThemeToggle, null), /*#__PURE__*/React.createElement("button", {
+  }, kasse.toFixed(2), " €")), /*#__PURE__*/React.createElement("button", {
     onClick: onLogout,
     style: {
       marginLeft: 6,
@@ -4446,48 +4389,11 @@ function OfflineBanner() {
     }
   }, "Keine Internetverbindung — Daten werden synchronisiert, sobald du wieder online bist"));
 }
-function ThemeToggle() {
-  const [isLight, setIsLight] = useState(() => {
-    try {
-      return localStorage.getItem("hsg_theme") === "light";
-    } catch {
-      return false;
-    }
-  });
-  const toggle = () => {
-    const next = !isLight;
-    setIsLight(next);
-    document.body.classList.toggle("light-mode", next);
-    try {
-      localStorage.setItem("hsg_theme", next ? "light" : "dark");
-    } catch {}
-  };
-  return /*#__PURE__*/React.createElement("button", {
-    onClick: toggle,
-    title: isLight ? "Dunkles Design" : "Helles Design",
-    style: {
-      marginLeft: 6,
-      background: "rgba(255,255,255,0.08)",
-      border: "1px solid rgba(255,255,255,0.2)",
-      color: "white",
-      borderRadius: 9,
-      padding: "7px 9px",
-      fontSize: 14,
-      cursor: "pointer",
-      flexShrink: 0
-    }
-  }, isLight ? "🌙" : "☀️");
-}
 function App() {
   const online = useOnline();
   const [cu, setCu] = useState(() => ld(AUTH_KEY, null));
   const [benutzer, setBenutzer] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("hsg_theme") === "light") document.body.classList.add("light-mode");
-    } catch {}
-  }, []);
   useEffect(() => {
     return col("benutzer").onSnapshot(snap => {
       const list = snap.docs.map(d => ({
