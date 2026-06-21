@@ -307,7 +307,8 @@ function Login({
 function BenutzerTab({
   benutzer,
   cu,
-  toast
+  toast,
+  eintraege
 }) {
   const [form, setForm] = useState({
     vorname: "",
@@ -320,6 +321,38 @@ function BenutzerTab({
   const [gutModal, setGutModal] = useState(null);
   const [gutVal, setGutVal] = useState("");
   const bn = (v, n) => mkU(v, n);
+  const sicherungErstellen = () => {
+    if (!eintraege || eintraege.length === 0) return toast("⚠️ Keine Buchungen vorhanden!");
+    const sicherung = {
+      erstellt: new Date().toISOString(),
+      erstelltVon: cu.benutzername,
+      anzahlEintraege: eintraege.length,
+      eintraege: eintraege.map(e => {
+        const {
+          id,
+          ...rest
+        } = e;
+        return {
+          id,
+          ...rest
+        };
+      })
+    };
+    const json = JSON.stringify(sicherung, null, 2);
+    const blob = new Blob([json], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const datum = new Date().toISOString().split("T")[0];
+    a.href = url;
+    a.download = `hsg-kasse-sicherung-${datum}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`✅ Sicherung mit ${eintraege.length} Buchungen heruntergeladen!`);
+  };
   const add = async () => {
     if (!form.vorname.trim() || !form.nachname.trim()) return toast("Vor- und Nachname erforderlich!");
     if (!form.passwort.trim() || form.passwort.length < 4) return toast("Passwort mind. 4 Zeichen!");
@@ -619,7 +652,41 @@ function BenutzerTab({
       textTransform: "uppercase",
       marginBottom: 16
     }
-  }, "👑 Benutzerverwaltung"), gutModal && /*#__PURE__*/React.createElement("div", {
+  }, "👑 Benutzerverwaltung"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(74,222,128,0.06)",
+      border: "1px solid #4ade8033",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#4ade80",
+      fontWeight: 700,
+      marginBottom: 6
+    }
+  }, "💾 Sicherung"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginBottom: 12
+    }
+  }, "Lädt alle Buchungen (Getränke, Einnahmen, Ausgaben, Spenden) als Datei herunter."), /*#__PURE__*/React.createElement("button", {
+    onClick: sicherungErstellen,
+    style: {
+      width: "100%",
+      padding: "12px",
+      background: "linear-gradient(135deg,#16a34a,#4ade80)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), gutModal && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
       inset: 0,
@@ -4068,7 +4135,8 @@ function MainApp({
   }), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
     benutzer: benutzer,
     cu: cu,
-    toast: toast
+    toast: toast,
+    eintraege: eintraege
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
