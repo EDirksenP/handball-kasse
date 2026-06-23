@@ -1608,6 +1608,8 @@ function TermineTab({
   const [editT, setEditT] = useState(null);
   const [zeigeForm, setZeigeForm] = useState(false);
   const [offenAdminVote, setOffenAdminVote] = useState(null);
+  const [vielleichtModal, setVielleichtModal] = useState(null); // {terminId, spielerName}
+  const [vielleichtGrund, setVielleichtGrund] = useState("");
 
   // Nur Termine der eigenen Mannschaft
   const meineMannschaft = cu.mannschaft || "1. Herren";
@@ -1672,29 +1674,51 @@ function TermineTab({
     await ref("termine", id).delete();
     toast("🗑️ Termin gelöscht");
   };
-  const reagieren = async (termin, status, spielerName) => {
+  const reagieren = async (termin, status, spielerName, grund) => {
     const name = spielerName || meinSpieler?.name;
     if (!name) return toast("⚠️ Kein Spieler-Profil gefunden!");
     if (spielerName && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
+    if (status === "vielleicht" && !grund?.trim()) return toast("⚠️ Bitte einen Grund angeben!");
     let zusagen = (termin.zusagen || []).filter(n => n !== name);
     let absagen = (termin.absagen || []).filter(n => n !== name);
+    let vielleicht = (termin.vielleicht || []).filter(v => (v.name || v) !== name);
     if (status === "zusage") zusagen.push(name);
     if (status === "absage") absagen.push(name);
+    if (status === "vielleicht") vielleicht.push({
+      name,
+      grund: grund.trim()
+    });
     await ref("termine", termin.id).update({
       zusagen,
-      absagen
+      absagen,
+      vielleicht
     });
-    toast(status === "zusage" ? `✅ ${name} zugesagt!` : `❌ ${name} abgesagt!`);
+    toast(status === "zusage" ? `✅ ${name} zugesagt!` : status === "absage" ? `❌ ${name} abgesagt!` : `❓ ${name}: Vielleicht`);
+  };
+  const oeffneVielleicht = (termin, spielerName) => {
+    setVielleichtModal({
+      termin,
+      spielerName
+    });
+    setVielleichtGrund("");
+  };
+  const sendeVielleicht = async () => {
+    if (!vielleichtGrund.trim()) return toast("⚠️ Bitte einen Grund angeben!");
+    await reagieren(vielleichtModal.termin, "vielleicht", vielleichtModal.spielerName, vielleichtGrund);
+    setVielleichtModal(null);
+    setVielleichtGrund("");
   };
   const statusVon = (termin, name) => {
     if ((termin.zusagen || []).includes(name)) return "zusage";
     if ((termin.absagen || []).includes(name)) return "absage";
+    if ((termin.vielleicht || []).some(v => (v.name || v) === name)) return "vielleicht";
     return null;
   };
   const meinStatus = termin => {
     if (!meinSpieler) return null;
     if ((termin.zusagen || []).includes(meinSpieler.name)) return "zusage";
     if ((termin.absagen || []).includes(meinSpieler.name)) return "absage";
+    if ((termin.vielleicht || []).some(v => (v.name || v) === meinSpieler.name)) return "vielleicht";
     return null;
   };
   const sortierteTermine = [...eigeneTermine].sort((a, b) => {
@@ -1711,7 +1735,8 @@ function TermineTab({
     const status = meinStatus(t);
     const anzZusagen = (t.zusagen || []).length;
     const anzAbsagen = (t.absagen || []).length;
-    const nichtAbgestimmt = eigeneSpieler.filter(sp => !(t.zusagen || []).includes(sp.name) && !(t.absagen || []).includes(sp.name));
+    const anzVielleicht = (t.vielleicht || []).length;
+    const nichtAbgestimmt = eigeneSpieler.filter(sp => !(t.zusagen || []).includes(sp.name) && !(t.absagen || []).includes(sp.name) && !(t.vielleicht || []).some(v => (v.name || v) === sp.name));
     return /*#__PURE__*/React.createElement("div", {
       key: t.id
     }, editT?.id === t.id ? /*#__PURE__*/React.createElement("div", {
@@ -1905,7 +1930,7 @@ function TermineTab({
     }, "🗑️"))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
-        gap: 8,
+        gap: 6,
         marginTop: 12
       }
     }, /*#__PURE__*/React.createElement("button", {
@@ -1919,9 +1944,9 @@ function TermineTab({
         background: status === "zusage" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
         color: status === "zusage" ? "#4ade80" : "#94a3b8",
         fontWeight: 700,
-        fontSize: 13
+        fontSize: 12
       }
-    }, "✅ Zusage"), /*#__PURE__*/React.createElement("button", {
+    }, "✅ Ja"), /*#__PURE__*/React.createElement("button", {
       onClick: () => reagieren(t, "absage"),
       style: {
         flex: 1,
@@ -1932,17 +1957,31 @@ function TermineTab({
         background: status === "absage" ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.03)",
         color: status === "absage" ? "#f87171" : "#94a3b8",
         fontWeight: 700,
-        fontSize: 13
+        fontSize: 12
       }
-    }, "❌ Absage")), /*#__PURE__*/React.createElement("div", {
+    }, "❌ Nein"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => status === "vielleicht" ? reagieren(t, "vielleicht", null, "—") : oeffneVielleicht(t, null),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "vielleicht" ? "#fbbf24" : "#003070"}`,
+        background: status === "vielleicht" ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "vielleicht" ? "#fbbf24" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 12
+      }
+    }, "❓ ", status === "vielleicht" ? "Vielleicht" : "Vielleicht")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
-        gap: 14,
+        gap: 12,
         marginTop: 10,
         fontSize: 11,
-        color: "#64748b"
+        color: "#64748b",
+        flexWrap: "wrap"
       }
-    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " ", anzZusagen === 1 ? "Zusage" : "Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " ", anzAbsagen === 1 ? "Absage" : "Absagen"), /*#__PURE__*/React.createElement("span", null, "⏳ ", nichtAbgestimmt.length, " offen")), (anzZusagen > 0 || anzAbsagen > 0) && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " Absagen"), /*#__PURE__*/React.createElement("span", null, "❓ ", (t.vielleicht || []).length, " Vielleicht"), /*#__PURE__*/React.createElement("span", null, "⏳ ", nichtAbgestimmt.length, " offen")), (anzZusagen > 0 || anzAbsagen > 0 || (t.vielleicht || []).length > 0) && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 8,
         paddingTop: 8,
@@ -1958,11 +1997,25 @@ function TermineTab({
       style: {
         color: "#4ade80"
       }
-    }, "✅"), " ", (t.zusagen || []).join(", ")), anzAbsagen > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    }, "✅"), " ", (t.zusagen || []).join(", ")), anzAbsagen > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
       style: {
         color: "#f87171"
       }
-    }, "❌"), " ", (t.absagen || []).join(", "))), nichtAbgestimmt.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, "❌"), " ", (t.absagen || []).join(", ")), (t.vielleicht || []).length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#fbbf24"
+      }
+    }, "❓"), " ", kannBearbeiten ? (t.vielleicht || []).map((v, i) => /*#__PURE__*/React.createElement("span", {
+      key: i
+    }, v.name || v, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, " (", v.grund || "—", ")"), i < (t.vielleicht || []).length - 1 ? ", " : "")) : (t.vielleicht || []).map(v => v.name || v).join(", "))), nichtAbgestimmt.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 6,
         fontSize: 11,
@@ -2013,7 +2066,7 @@ function TermineTab({
         style: {
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
           padding: "6px 10px",
           borderRadius: 8,
           background: "rgba(255,255,255,0.03)"
@@ -2038,10 +2091,10 @@ function TermineTab({
           fontSize: 12,
           fontWeight: 600
         }
-      }, sp.name), /*#__PURE__*/React.createElement("button", {
+      }, sp.name.split(" ")[0]), /*#__PURE__*/React.createElement("button", {
         onClick: () => reagieren(t, "zusage", sp.name),
         style: {
-          padding: "4px 8px",
+          padding: "4px 7px",
           borderRadius: 6,
           cursor: "pointer",
           border: `1px solid ${spStatus === "zusage" ? "#4ade80" : "#003070"}`,
@@ -2052,7 +2105,7 @@ function TermineTab({
       }, "✅"), /*#__PURE__*/React.createElement("button", {
         onClick: () => reagieren(t, "absage", sp.name),
         style: {
-          padding: "4px 8px",
+          padding: "4px 7px",
           borderRadius: 6,
           cursor: "pointer",
           border: `1px solid ${spStatus === "absage" ? "#f87171" : "#003070"}`,
@@ -2060,7 +2113,18 @@ function TermineTab({
           color: spStatus === "absage" ? "#f87171" : "#64748b",
           fontSize: 13
         }
-      }, "❌"));
+      }, "❌"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => oeffneVielleicht(t, sp.name),
+        style: {
+          padding: "4px 7px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "vielleicht" ? "#fbbf24" : "#003070"}`,
+          background: spStatus === "vielleicht" ? "rgba(251,191,36,0.2)" : "transparent",
+          color: spStatus === "vielleicht" ? "#fbbf24" : "#64748b",
+          fontSize: 13
+        }
+      }, "❓"));
     })))));
   };
   return /*#__PURE__*/React.createElement("div", {
@@ -2076,7 +2140,88 @@ function TermineTab({
       textTransform: "uppercase",
       marginBottom: 16
     }
-  }, "📅 Termine — ", meineMannschaft), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+  }, "📅 Termine — ", meineMannschaft), vielleichtModal && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setVielleichtModal(null),
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: "#001A3A",
+      border: "2px solid #fbbf24",
+      borderRadius: 16,
+      padding: 24,
+      width: "100%",
+      maxWidth: 340
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 4
+    }
+  }, "❓ Vielleicht"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginBottom: 14
+    }
+  }, "Bitte gib einen kurzen Grund an — dieser ist nur für Admin und Eventorganisation sichtbar."), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginBottom: 4
+    }
+  }, "GRUND"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Muss eventuell arbeiten...",
+    value: vielleichtGrund,
+    onChange: e => setVielleichtGrund(e.target.value),
+    onKeyDown: e => e.key === "Enter" && sendeVielleicht(),
+    autoFocus: true,
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 14
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: sendeVielleicht,
+    style: {
+      flex: 1,
+      padding: "12px",
+      background: "linear-gradient(135deg,#d97706,#fbbf24)",
+      border: "none",
+      borderRadius: 12,
+      color: "#1a1a1a",
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "❓ Vielleicht bestätigen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVielleichtModal(null),
+    style: {
+      padding: "12px 14px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 20
     }
