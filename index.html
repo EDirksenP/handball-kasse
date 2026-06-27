@@ -65,6 +65,15 @@ const GETRAENKE_DEFAULT = [{
   preis: 1.20,
   emoji: "⚡"
 }];
+const SONSTIGES_DEFAULT = [{
+  name: "Bratwurst",
+  preis: 2.00,
+  emoji: "🌭"
+}, {
+  name: "Zigaretten",
+  preis: 0.50,
+  emoji: "🚬"
+}];
 const STRAFEN_DEFAULT = [{
   grund: "Zu spät zum Training",
   betrag: 2.00
@@ -2487,6 +2496,7 @@ function MainApp({
   const [eintraege, setEintraege] = useState([]);
   const [spieler, setSpieler] = useState([]);
   const [getraenke, setGetraenke] = useState([]);
+  const [sonstiges, setSonstiges] = useState([]);
   const [benutzer, setBenutzer] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("konto");
@@ -2548,7 +2558,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 6) setLoading(false);
+      if (n >= 7) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -2594,6 +2604,15 @@ function MainApp({
       })));
       done();
     });
+    const u7 = col("sonstiges").onSnapshot(s => {
+      const l = s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (l.length === 0) SONSTIGES_DEFAULT.forEach(g => col("sonstiges").add(g));
+      setSonstiges(l);
+      done();
+    });
     return () => {
       u1();
       u2();
@@ -2601,12 +2620,15 @@ function MainApp({
       u4();
       u5();
       u6();
+      u7();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
-  const buchG = async g => {
+  const [buchKat, setBuchKat] = useState("getraenk"); // "getraenk" | "sonstiges"
+
+  const buchArtikel = async (g, typ) => {
     if (!gwS) return toast("⚠️ Bitte erst Spieler auswählen!");
     const sp = spieler.find(s => s.id === gwS);
     if (zahlart === "guthaben") {
@@ -2617,7 +2639,7 @@ function MainApp({
       });
     }
     await col("eintraege").add({
-      typ: "getraenk",
+      typ,
       betrag: g.preis,
       beschreibung: g.name,
       getraenkEmoji: g.emoji,
@@ -2635,6 +2657,8 @@ function MainApp({
     });
     toast(`✅ ${g.emoji} ${g.name} für ${sp.name}! (${zahlart === "guthaben" ? "💰 Guthaben" : "💵 Direkt"})`);
   };
+  const buchG = async g => buchArtikel(g, "getraenk");
+  const buchS = async g => buchArtikel(g, "sonstiges");
   const addManual = async () => {
     const b = parseFloat(mForm.betrag.replace(",", "."));
     if (!b || b <= 0) return toast("Bitte gültigen Betrag!");
@@ -2725,7 +2749,7 @@ function MainApp({
   const kasse = ein + spe + gSum - aus;
   const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS);
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["termine", "📅", "Termine"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -3456,23 +3480,56 @@ function MainApp({
       fontWeight: 700,
       marginBottom: 10
     }
-  }, "🥤 GETRÄNK WÄHLEN"), /*#__PURE__*/React.createElement("div", {
+  }, buchKat === "getraenk" ? "🥤 GETRÄNK WÄHLEN" : "🛒 SONSTIGES WÄHLEN"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchKat("getraenk"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchKat === "getraenk" ? "#2288FF" : "#003070"}`,
+      background: buchKat === "getraenk" ? "rgba(34,136,255,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchKat === "getraenk" ? "#2288FF" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "🥤 Getränke"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchKat("sonstiges"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchKat === "sonstiges" ? "#a78bfa" : "#003070"}`,
+      background: buchKat === "sonstiges" ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchKat === "sonstiges" ? "#a78bfa" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "🛒 Sonstiges")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
       gap: 10
     }
-  }, getraenke.map(g => {
+  }, (buchKat === "getraenk" ? getraenke : sonstiges).map(g => {
     const nok = zahlart === "guthaben" && gwS && gut < g.preis;
+    const akzent = buchKat === "getraenk" ? "#2288FF" : "#a78bfa";
     return /*#__PURE__*/React.createElement("button", {
       key: g.id,
-      onClick: () => buchG(g),
+      onClick: () => buchKat === "getraenk" ? buchG(g) : buchS(g),
       style: {
         padding: "14px 10px",
         borderRadius: 14,
         cursor: "pointer",
-        border: `1px solid ${gwS && !nok ? "#2288FF44" : "#003070"}`,
-        background: gwS && !nok ? "rgba(34,136,255,0.08)" : "rgba(255,255,255,0.03)",
+        border: `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
+        background: gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
         color: gwS && !nok ? "#e2e8f0" : "#475569",
         display: "flex",
         flexDirection: "column",
@@ -3492,7 +3549,7 @@ function MainApp({
     }, g.name), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 13,
-        color: "#2288FF",
+        color: akzent,
         fontWeight: 800
       }
     }, g.preis.toFixed(2), " €"));
@@ -4011,7 +4068,7 @@ function MainApp({
       letterSpacing: 1,
       textTransform: "uppercase"
     }
-  }, "🏆 Top-Trinker"), /*#__PURE__*/React.createElement("div", {
+  }, "🏆 Top-Trinker & Käufer"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: "#94a3b8",
@@ -4019,28 +4076,50 @@ function MainApp({
       transform: topTrinkerOffen ? "rotate(0deg)" : "rotate(-90deg)"
     }
   }, "▼")), topTrinkerOffen && spieler.map(sp => {
-    const s = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id).reduce((x, e) => x + e.betrag, 0);
-    const a = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id).length;
+    const getraenkEintraege = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id);
+    const sonstigesEintraege = eintraege.filter(e => e.typ === "sonstiges" && e.spielerId === sp.id);
+    const gSumme = getraenkEintraege.reduce((x, e) => x + e.betrag, 0);
+    const sSumme = sonstigesEintraege.reduce((x, e) => x + e.betrag, 0);
+    const gesamt = gSumme + sSumme;
+    // Zähle je Artikel-Name
+    const gCount = {};
+    getraenkEintraege.forEach(e => {
+      gCount[e.beschreibung] = (gCount[e.beschreibung] || 0) + 1;
+    });
+    const sCount = {};
+    sonstigesEintraege.forEach(e => {
+      sCount[e.beschreibung] = (sCount[e.beschreibung] || 0) + 1;
+    });
     return {
       sp,
-      s,
-      a
+      gesamt,
+      gCount,
+      sCount,
+      gSumme,
+      sSumme
     };
-  }).sort((a, b) => b.s - a.s).map(({
+  }).filter(x => x.gesamt > 0).sort((a, b) => b.gesamt - a.gesamt).map(({
     sp,
-    s,
-    a
+    gesamt,
+    gCount,
+    sCount,
+    gSumme,
+    sSumme
   }) => /*#__PURE__*/React.createElement("div", {
     key: sp.id,
     style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      padding: "10px 14px",
+      padding: "12px 14px",
       borderRadius: 12,
       marginBottom: 8,
       background: "rgba(255,255,255,0.03)",
       border: `1px solid ${pCol(sp.id)}25`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 6
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4053,29 +4132,35 @@ function MainApp({
       justifyContent: "center",
       fontSize: 13,
       fontWeight: 800,
-      color: "#001A3A"
+      color: "#001A3A",
+      flexShrink: 0
     }
   }, ava(sp.name)), /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
+      flex: 1,
       fontWeight: 700,
       fontSize: 14
     }
   }, sp.name), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
-      color: "#64748b"
-    }
-  }, a, " Getränke")), /*#__PURE__*/React.createElement("div", {
-    style: {
       fontWeight: 800,
       color: pCol(sp.id),
       fontSize: 15
     }
-  }, s.toFixed(2), " €"))))), tab === "spieler" && /*#__PURE__*/React.createElement("div", {
+  }, gesamt.toFixed(2), " €")), Object.keys(gCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#2288FF",
+      marginLeft: 48,
+      marginBottom: 2
+    }
+  }, "🥤 ", Object.entries(gCount).map(([n, c]) => `${n} ×${c}`).join(" · ")), Object.keys(sCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#a78bfa",
+      marginLeft: 48
+    }
+  }, "🛒 ", Object.entries(sCount).map(([n, c]) => `${n} ×${c}`).join(" · ")))))), tab === "spieler" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
     }
@@ -4415,7 +4500,231 @@ function MainApp({
       fontSize: 12,
       cursor: "pointer"
     }
-  }, "🗑️"))))), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
+  }, "🗑️"))))), tab === "sonstiges" && (() => {
+    const [nSName, setNSName] = useState("");
+    const [editSon, setEditSon] = useState(null);
+    const [gSForm, setGSForm] = useState({
+      name: "",
+      preis: "",
+      emoji: "🌭"
+    });
+    const addSon = async () => {
+      const p = parseFloat(gSForm.preis.replace(",", "."));
+      if (!gSForm.name.trim() || !p || p <= 0) return toast("Name und Preis erforderlich!");
+      await col("sonstiges").add({
+        name: gSForm.name.trim(),
+        preis: p,
+        emoji: gSForm.emoji
+      });
+      setGSForm({
+        name: "",
+        preis: "",
+        emoji: "🌭"
+      });
+      toast("✅ Hinzugefügt!");
+    };
+    const delSon = async id => {
+      await ref("sonstiges", id).delete();
+      toast("🗑️ Gelöscht");
+    };
+    const saveEditSon = async () => {
+      const p = parseFloat(String(editSon.preis).replace(",", "."));
+      if (!editSon.name.trim() || !p) return;
+      await ref("sonstiges", editSon.id).set({
+        name: editSon.name.trim(),
+        preis: p,
+        emoji: editSon.emoji
+      });
+      setEditSon(null);
+      toast("✅ Gespeichert");
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        marginBottom: 14
+      }
+    }, "🛒 Sonstiges verwalten"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        flexWrap: "wrap",
+        marginBottom: 10
+      }
+    }, ["🌭", "🍕", "🍔", "🥪", "🍿", "🚬", "🍫", "🎲", "👕", "🧢", "🎱", "⚽"].map(em => /*#__PURE__*/React.createElement("button", {
+      key: em,
+      onClick: () => setGSForm(f => ({
+        ...f,
+        emoji: em
+      })),
+      style: {
+        fontSize: 20,
+        background: gSForm.emoji === em ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
+        border: `1px solid ${gSForm.emoji === em ? "#a78bfa" : "#003070"}`,
+        borderRadius: 8,
+        padding: "4px 7px",
+        cursor: "pointer"
+      }
+    }, em))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginBottom: 20
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      placeholder: "Name (z.B. Bratwurst)",
+      value: gSForm.name,
+      onChange: e => setGSForm(f => ({
+        ...f,
+        name: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 2
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      placeholder: "€",
+      value: gSForm.preis,
+      onChange: e => setGSForm(f => ({
+        ...f,
+        preis: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: addSon,
+      style: {
+        padding: "0 16px",
+        background: "linear-gradient(135deg,#6d28d9,#a78bfa)",
+        border: "none",
+        borderRadius: 12,
+        color: "white",
+        fontWeight: 800,
+        fontSize: 20,
+        cursor: "pointer",
+        flexShrink: 0
+      }
+    }, "+")), sonstiges.map(g => /*#__PURE__*/React.createElement("div", {
+      key: g.id
+    }, editSon?.id === g.id ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 7,
+        marginBottom: 8,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, editSon.emoji), /*#__PURE__*/React.createElement("input", {
+      value: editSon.name,
+      onChange: e => setEditSon(x => ({
+        ...x,
+        name: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 2
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: editSon.preis,
+      onChange: e => setEditSon(x => ({
+        ...x,
+        preis: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: saveEditSon,
+      style: {
+        padding: "0 12px",
+        background: "#4ade8022",
+        border: "1px solid #4ade80",
+        color: "#4ade80",
+        borderRadius: 10,
+        cursor: "pointer",
+        fontWeight: 700,
+        height: 48
+      }
+    }, "✓"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditSon(null),
+      style: {
+        padding: "0 10px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid #003070",
+        color: "#94a3b8",
+        borderRadius: 10,
+        cursor: "pointer",
+        height: 48
+      }
+    }, "✕")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 14px",
+        borderRadius: 12,
+        marginBottom: 8,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid #a78bfa22"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, g.emoji), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        fontWeight: 700
+      }
+    }, g.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#a78bfa",
+        fontWeight: 800
+      }
+    }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditSon(g),
+      style: {
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.3)",
+        color: "#2288FF",
+        borderRadius: 7,
+        padding: "4px 9px",
+        fontSize: 12,
+        cursor: "pointer"
+      }
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delSon(g.id),
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        color: "#f87171",
+        borderRadius: 7,
+        padding: "4px 9px",
+        fontSize: 12,
+        cursor: "pointer"
+      }
+    }, "🗑️")))));
+  })(), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
     benutzer: benutzer,
     spieler: spieler,
     termine: termine,
