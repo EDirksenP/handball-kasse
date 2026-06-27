@@ -4369,7 +4369,7 @@ function MainApp({
       display: "flex",
       alignItems: "center",
       gap: 12,
-      marginBottom: 6
+      marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4399,18 +4399,66 @@ function MainApp({
     }
   }, gesamt.toFixed(2), " €")), Object.keys(gCount).length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
-      color: "#2288FF",
       marginLeft: 48,
-      marginBottom: 2
+      marginBottom: 6,
+      padding: "6px 10px",
+      background: "rgba(34,136,255,0.06)",
+      borderRadius: 8,
+      borderLeft: "2px solid #2288FF"
     }
-  }, "🥤 ", Object.entries(gCount).map(([n, c]) => `${n} ×${c}`).join(" · ")), Object.keys(sCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 3
+    }
+  }, "🥤 GETRÄNKE — ", gSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4
+    }
+  }, Object.entries(gCount).sort((a, b) => b[1] - a[1]).map(([n, c]) => /*#__PURE__*/React.createElement("span", {
+    key: n,
     style: {
       fontSize: 11,
-      color: "#a78bfa",
-      marginLeft: 48
+      color: "#93c5fd",
+      background: "rgba(34,136,255,0.12)",
+      padding: "2px 7px",
+      borderRadius: 12
     }
-  }, "🛒 ", Object.entries(sCount).map(([n, c]) => `${n} ×${c}`).join(" · ")))))), tab === "spieler" && /*#__PURE__*/React.createElement("div", {
+  }, n, " ", /*#__PURE__*/React.createElement("strong", null, "×", c))))), Object.keys(sCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: 48,
+      padding: "6px 10px",
+      background: "rgba(167,139,250,0.06)",
+      borderRadius: 8,
+      borderLeft: "2px solid #a78bfa"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#a78bfa",
+      fontWeight: 700,
+      marginBottom: 3
+    }
+  }, "🛒 SONSTIGES — ", sSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4
+    }
+  }, Object.entries(sCount).sort((a, b) => b[1] - a[1]).map(([n, c]) => /*#__PURE__*/React.createElement("span", {
+    key: n,
+    style: {
+      fontSize: 11,
+      color: "#c4b5fd",
+      background: "rgba(167,139,250,0.12)",
+      padding: "2px 7px",
+      borderRadius: 12
+    }
+  }, n, " ", /*#__PURE__*/React.createElement("strong", null, "×", c))))))))), tab === "spieler" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
     }
