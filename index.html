@@ -2489,6 +2489,243 @@ function TermineTab({
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────
+// ── SONSTIGES TAB ────────────────────────────────────────────
+function SonstigesTab({
+  sonstiges,
+  toast
+}) {
+  const [editSon, setEditSon] = useState(null);
+  const [gSForm, setGSForm] = useState({
+    name: "",
+    preis: "",
+    emoji: "🌭"
+  });
+  const EMOJIS_SON = ["🌭", "🍕", "🍔", "🥪", "🍿", "🚬", "🍫", "🎲", "👕", "🧢", "🎱", "⚽", "🧃", "🥤", "🍺", "☕"];
+  const addSon = async () => {
+    const p = parseFloat(gSForm.preis.replace(",", "."));
+    if (!gSForm.name.trim() || !p || p <= 0) return toast("Name und Preis erforderlich!");
+    await col("sonstiges").add({
+      name: gSForm.name.trim(),
+      preis: p,
+      emoji: gSForm.emoji
+    });
+    setGSForm({
+      name: "",
+      preis: "",
+      emoji: "🌭"
+    });
+    toast("✅ Hinzugefügt!");
+  };
+  const delSon = async id => {
+    await ref("sonstiges", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditSon = async () => {
+    const p = parseFloat(String(editSon.preis).replace(",", "."));
+    if (!editSon.name.trim() || !p) return;
+    await ref("sonstiges", editSon.id).set({
+      name: editSon.name.trim(),
+      preis: p,
+      emoji: editSon.emoji
+    });
+    setEditSon(null);
+    toast("✅ Gespeichert");
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 14
+    }
+  }, "🛒 Sonstiges verwalten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap",
+      marginBottom: 10
+    }
+  }, EMOJIS_SON.map(em => /*#__PURE__*/React.createElement("button", {
+    key: em,
+    onClick: () => setGSForm(f => ({
+      ...f,
+      emoji: em
+    })),
+    style: {
+      fontSize: 20,
+      background: gSForm.emoji === em ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${gSForm.emoji === em ? "#a78bfa" : "#003070"}`,
+      borderRadius: 8,
+      padding: "4px 7px",
+      cursor: "pointer"
+    }
+  }, em))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Name (z.B. Bratwurst)",
+    value: gSForm.name,
+    onChange: e => setGSForm(f => ({
+      ...f,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "€",
+    value: gSForm.preis,
+    onChange: e => setGSForm(f => ({
+      ...f,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addSon,
+    style: {
+      padding: "0 16px",
+      background: "linear-gradient(135deg,#6d28d9,#a78bfa)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontWeight: 800,
+      fontSize: 20,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "+")), sonstiges.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "Noch keine sonstigen Artikel"), sonstiges.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g.id
+  }, editSon?.id === g.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, editSon.emoji), /*#__PURE__*/React.createElement("input", {
+    value: editSon.name,
+    onChange: e => setEditSon(x => ({
+      ...x,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editSon.preis,
+    onChange: e => setEditSon(x => ({
+      ...x,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditSon,
+    style: {
+      padding: "0 12px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700,
+      height: 48
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSon(null),
+    style: {
+      padding: "0 10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer",
+      height: 48
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #a78bfa22"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, g.emoji), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      fontWeight: 700
+    }
+  }, g.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#a78bfa",
+      fontWeight: 800
+    }
+  }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSon(g),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delSon(g.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "🗑️")))));
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────
 function MainApp({
   cu,
   onLogout
@@ -4500,231 +4737,10 @@ function MainApp({
       fontSize: 12,
       cursor: "pointer"
     }
-  }, "🗑️"))))), tab === "sonstiges" && (() => {
-    const [nSName, setNSName] = useState("");
-    const [editSon, setEditSon] = useState(null);
-    const [gSForm, setGSForm] = useState({
-      name: "",
-      preis: "",
-      emoji: "🌭"
-    });
-    const addSon = async () => {
-      const p = parseFloat(gSForm.preis.replace(",", "."));
-      if (!gSForm.name.trim() || !p || p <= 0) return toast("Name und Preis erforderlich!");
-      await col("sonstiges").add({
-        name: gSForm.name.trim(),
-        preis: p,
-        emoji: gSForm.emoji
-      });
-      setGSForm({
-        name: "",
-        preis: "",
-        emoji: "🌭"
-      });
-      toast("✅ Hinzugefügt!");
-    };
-    const delSon = async id => {
-      await ref("sonstiges", id).delete();
-      toast("🗑️ Gelöscht");
-    };
-    const saveEditSon = async () => {
-      const p = parseFloat(String(editSon.preis).replace(",", "."));
-      if (!editSon.name.trim() || !p) return;
-      await ref("sonstiges", editSon.id).set({
-        name: editSon.name.trim(),
-        preis: p,
-        emoji: editSon.emoji
-      });
-      setEditSon(null);
-      toast("✅ Gespeichert");
-    };
-    return /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: 20
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: "#94a3b8",
-        fontWeight: 700,
-        letterSpacing: 1,
-        textTransform: "uppercase",
-        marginBottom: 14
-      }
-    }, "🛒 Sonstiges verwalten"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 6,
-        flexWrap: "wrap",
-        marginBottom: 10
-      }
-    }, ["🌭", "🍕", "🍔", "🥪", "🍿", "🚬", "🍫", "🎲", "👕", "🧢", "🎱", "⚽"].map(em => /*#__PURE__*/React.createElement("button", {
-      key: em,
-      onClick: () => setGSForm(f => ({
-        ...f,
-        emoji: em
-      })),
-      style: {
-        fontSize: 20,
-        background: gSForm.emoji === em ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
-        border: `1px solid ${gSForm.emoji === em ? "#a78bfa" : "#003070"}`,
-        borderRadius: 8,
-        padding: "4px 7px",
-        cursor: "pointer"
-      }
-    }, em))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 8,
-        marginBottom: 20
-      }
-    }, /*#__PURE__*/React.createElement("input", {
-      type: "text",
-      placeholder: "Name (z.B. Bratwurst)",
-      value: gSForm.name,
-      onChange: e => setGSForm(f => ({
-        ...f,
-        name: e.target.value
-      })),
-      style: {
-        ...IS,
-        marginTop: 0,
-        flex: 2
-      }
-    }), /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      placeholder: "€",
-      value: gSForm.preis,
-      onChange: e => setGSForm(f => ({
-        ...f,
-        preis: e.target.value
-      })),
-      style: {
-        ...IS,
-        marginTop: 0,
-        flex: 1
-      }
-    }), /*#__PURE__*/React.createElement("button", {
-      onClick: addSon,
-      style: {
-        padding: "0 16px",
-        background: "linear-gradient(135deg,#6d28d9,#a78bfa)",
-        border: "none",
-        borderRadius: 12,
-        color: "white",
-        fontWeight: 800,
-        fontSize: 20,
-        cursor: "pointer",
-        flexShrink: 0
-      }
-    }, "+")), sonstiges.map(g => /*#__PURE__*/React.createElement("div", {
-      key: g.id
-    }, editSon?.id === g.id ? /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 7,
-        marginBottom: 8,
-        alignItems: "center"
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 20
-      }
-    }, editSon.emoji), /*#__PURE__*/React.createElement("input", {
-      value: editSon.name,
-      onChange: e => setEditSon(x => ({
-        ...x,
-        name: e.target.value
-      })),
-      style: {
-        ...IS,
-        marginTop: 0,
-        flex: 2
-      }
-    }), /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      value: editSon.preis,
-      onChange: e => setEditSon(x => ({
-        ...x,
-        preis: e.target.value
-      })),
-      style: {
-        ...IS,
-        marginTop: 0,
-        flex: 1
-      }
-    }), /*#__PURE__*/React.createElement("button", {
-      onClick: saveEditSon,
-      style: {
-        padding: "0 12px",
-        background: "#4ade8022",
-        border: "1px solid #4ade80",
-        color: "#4ade80",
-        borderRadius: 10,
-        cursor: "pointer",
-        fontWeight: 700,
-        height: 48
-      }
-    }, "✓"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => setEditSon(null),
-      style: {
-        padding: "0 10px",
-        background: "rgba(255,255,255,0.05)",
-        border: "1px solid #003070",
-        color: "#94a3b8",
-        borderRadius: 10,
-        cursor: "pointer",
-        height: 48
-      }
-    }, "✕")) : /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "10px 14px",
-        borderRadius: 12,
-        marginBottom: 8,
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid #a78bfa22"
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 20
-      }
-    }, g.emoji), /*#__PURE__*/React.createElement("span", {
-      style: {
-        flex: 1,
-        fontWeight: 700
-      }
-    }, g.name), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: "#a78bfa",
-        fontWeight: 800
-      }
-    }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => setEditSon(g),
-      style: {
-        background: "rgba(34,136,255,0.1)",
-        border: "1px solid rgba(34,136,255,0.3)",
-        color: "#2288FF",
-        borderRadius: 7,
-        padding: "4px 9px",
-        fontSize: 12,
-        cursor: "pointer"
-      }
-    }, "✏️"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => delSon(g.id),
-      style: {
-        background: "rgba(248,113,113,0.1)",
-        border: "1px solid rgba(248,113,113,0.3)",
-        color: "#f87171",
-        borderRadius: 7,
-        padding: "4px 9px",
-        fontSize: 12,
-        cursor: "pointer"
-      }
-    }, "🗑️")))));
-  })(), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
+  }, "🗑️"))))), tab === "sonstiges" && /*#__PURE__*/React.createElement(SonstigesTab, {
+    sonstiges: sonstiges,
+    toast: toast
+  }), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
     benutzer: benutzer,
     spieler: spieler,
     termine: termine,
