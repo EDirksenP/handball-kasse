@@ -404,7 +404,8 @@ function BenutzerTab({
     nachname: "",
     passwort: "",
     rolle: "mitglied",
-    mannschaft: "1. Herren"
+    mannschaft: "1. Herren",
+    geburtstag: ""
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
@@ -454,14 +455,16 @@ function BenutzerTab({
       passwort: form.passwort.trim(),
       rolle: form.rolle,
       mannschaft: form.mannschaft,
-      guthaben: 0
+      guthaben: 0,
+      geburtstag: form.geburtstag || ""
     });
     setForm({
       vorname: "",
       nachname: "",
       passwort: "",
       rolle: "mitglied",
-      mannschaft: "1. Herren"
+      mannschaft: "1. Herren",
+      geburtstag: ""
     });
     toast("✅ Benutzer angelegt!");
   };
@@ -479,7 +482,8 @@ function BenutzerTab({
       passwort: edit.passwort.trim(),
       rolle: edit.rolle,
       mannschaft: edit.mannschaft || "1. Herren",
-      guthaben: edit.guthaben || 0
+      guthaben: edit.guthaben || 0,
+      geburtstag: edit.geburtstag || ""
     });
     setEdit(null);
     toast("✅ Gespeichert");
@@ -582,7 +586,7 @@ function BenutzerTab({
     style: {
       ...IS,
       marginTop: 0,
-      marginBottom: 10
+      marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: "mitglied"
@@ -592,7 +596,26 @@ function BenutzerTab({
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
-  }, "Admin")), /*#__PURE__*/React.createElement("div", {
+  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "🎂 GEBURTSTAG (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: edit.geburtstag || "",
+    onChange: e => setEdit(x => ({
+      ...x,
+      geburtstag: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -664,7 +687,13 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.rolle === "strafenwart" && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#f472b6",
+      marginTop: 1
+    }
+  }, "🎂 ", fmtD(b.geburtstag)), b.rolle === "strafenwart" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#fb923c",
@@ -984,7 +1013,23 @@ function BenutzerTab({
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
-  }, "Admin")), /*#__PURE__*/React.createElement("button", {
+  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "🎂 GEBURTSTAG (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: form.geburtstag || "",
+    onChange: e => setForm(f => ({
+      ...f,
+      geburtstag: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("button", {
     onClick: add,
     style: {
       width: "100%",
@@ -2767,6 +2812,7 @@ function MainApp({
   const [editG, setEditG] = useState(null);
   const [vF, setVF] = useState("alle");
   const [vS, setVS] = useState("alle");
+  const [vSuche, setVSuche] = useState("");
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
   const isAdmin = cu.rolle === "admin";
@@ -2992,7 +3038,11 @@ function MainApp({
   const sSum = eintraege.filter(e => e.typ === "sonstiges").reduce((s, e) => s + e.betrag, 0);
   const kasse = ein + spe + gSum + sSum - aus;
   const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS);
+  const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS).filter(e => {
+    if (!vSuche.trim()) return true;
+    const q = vSuche.trim().toLowerCase();
+    return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
+  });
   const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3093,7 +3143,36 @@ function MainApp({
       cursor: "pointer",
       flexShrink: 0
     }
-  }, "🔒"))), /*#__PURE__*/React.createElement("div", {
+  }, "🔒"))), (() => {
+    const heute = new Date();
+    const heuteMMDD = `${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
+    const geburtstagskinder = benutzer.filter(b => b.geburtstag && b.geburtstag.slice(5) === heuteMMDD);
+    if (geburtstagskinder.length === 0) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg,#be185d,#ec4899)",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        justifyContent: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, "🎂"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "white",
+        fontSize: 13,
+        fontWeight: 700
+      }
+    }, "Heute ", geburtstagskinder.length === 1 ? "hat" : "haben", " ", geburtstagskinder.map(b => b.vorname).join(" & "), " Geburtstag!"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, "🎉"));
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       paddingBottom: 95
     }
@@ -4007,9 +4086,19 @@ function MainApp({
       fontWeight: 700,
       letterSpacing: 1,
       textTransform: "uppercase",
-      marginBottom: 14
+      marginBottom: 10
     }
-  }, "📋 Verlauf"), /*#__PURE__*/React.createElement("div", {
+  }, "📋 Verlauf"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "🔍 Suche nach Name, Artikel, Datum...",
+    value: vSuche,
+    onChange: e => setVSuche(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 12
+    }
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 6,
