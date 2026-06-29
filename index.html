@@ -397,7 +397,8 @@ function BenutzerTab({
   benutzer,
   cu,
   toast,
-  eintraege
+  eintraege,
+  schwarzesBrett
 }) {
   const [form, setForm] = useState({
     vorname: "",
@@ -804,7 +805,11 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), gutModal && /*#__PURE__*/React.createElement("div", {
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+    schwarzesBrett: schwarzesBrett || [],
+    cu: cu,
+    toast: toast
+  }), gutModal && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
       inset: 0,
@@ -2818,6 +2823,159 @@ function SonstigesTab({
   }, "🗑️")))));
 }
 
+// ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
+function SchwarzeBrettVerwaltung({
+  schwarzesBrett,
+  cu,
+  toast
+}) {
+  const [neuerTitel, setNeuerTitel] = useState("");
+  const [neuerText, setNeuerText] = useState("");
+  const posten = async () => {
+    if (!neuerTitel.trim()) return toast("⚠️ Bitte einen Titel eingeben!");
+    await col("schwarzesbrett").add({
+      titel: neuerTitel.trim(),
+      text: neuerText.trim(),
+      mannschaft: cu.mannschaft || "1. Herren",
+      vonName: cu.vorname + " " + cu.nachname,
+      datum: new Date().toLocaleDateString("de-DE"),
+      ts: Date.now()
+    });
+    setNeuerTitel("");
+    setNeuerText("");
+    toast("✅ Nachricht gepostet!");
+  };
+  const loeschen = async id => {
+    await ref("schwarzesbrett", id).delete();
+    toast("🗑️ Nachricht gelöscht");
+  };
+  const eigene = schwarzesBrett.filter(m => (m.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren"));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(251,191,36,0.06)",
+      border: "1px solid #fbbf2433",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#fbbf24",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "📌 Schwarzes Brett"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "TITEL"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Training fällt aus!",
+    value: neuerTitel,
+    onChange: e => setNeuerTitel(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "DETAILS (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Halle belegt, nächstes Training Freitag",
+    value: neuerText,
+    onChange: e => setNeuerText(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: posten,
+    style: {
+      width: "100%",
+      padding: "10px",
+      background: "linear-gradient(135deg,#b45309,#fbbf24)",
+      border: "none",
+      borderRadius: 10,
+      color: "#1a1a1a",
+      fontWeight: 800,
+      fontSize: 13,
+      cursor: "pointer",
+      marginBottom: 14
+    }
+  }, "📌 Nachricht posten"), eigene.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 8
+    }
+  }, "AKTUELLE NACHRICHTEN"), eigene.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.id,
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      padding: "8px 10px",
+      borderRadius: 8,
+      marginBottom: 6,
+      background: "rgba(251,191,36,0.08)",
+      border: "1px solid #fbbf2430"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 12,
+      color: "#fde68a"
+    }
+  }, m.titel), m.text && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginTop: 2
+    }
+  }, m.text), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#64748b",
+      marginTop: 3
+    }
+  }, m.datum, " · ", m.vonName)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => loeschen(m.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 6,
+      padding: "3px 7px",
+      fontSize: 11,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "🗑️"))), eigene.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#475569",
+      textAlign: "center",
+      padding: "10px 0"
+    }
+  }, "Noch keine Nachrichten"));
+}
+
 // ── MAIN APP ──────────────────────────────────────────────────
 function MainApp({
   cu,
@@ -2858,6 +3016,7 @@ function MainApp({
   const [vSuche, setVSuche] = useState("");
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
+  const [schwarzesBrett, setSchwarzBrett] = useState([]);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const isEventorga = cu.rolle === "eventorga" || isAdmin;
@@ -2890,7 +3049,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 7) setLoading(false);
+      if (n >= 8) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -2945,6 +3104,13 @@ function MainApp({
       setSonstiges(l);
       done();
     });
+    const u8 = col("schwarzesbrett").onSnapshot(s => {
+      setSchwarzBrett(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
+      done();
+    });
     return () => {
       u1();
       u2();
@@ -2953,6 +3119,7 @@ function MainApp({
       u5();
       u6();
       u7();
+      u8();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
@@ -3086,7 +3253,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -3317,7 +3484,47 @@ function MainApp({
         fontWeight: 900,
         color: meinGut > 0 ? "#4ade80" : "#f87171"
       }
-    }, meinGut.toFixed(2), " €"))), naechsterTermin ? /*#__PURE__*/React.createElement("div", {
+    }, meinGut.toFixed(2), " €"))), schwarzesBrett.filter(m => (m.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren")).slice(0, 3).map(m => /*#__PURE__*/React.createElement("div", {
+      key: m.id,
+      style: {
+        background: "rgba(251,191,36,0.08)",
+        border: "1px solid #fbbf2440",
+        borderLeft: "3px solid #fbbf24",
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginBottom: 10,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20,
+        flexShrink: 0
+      }
+    }, "📌"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 13,
+        color: "#fde68a"
+      }
+    }, m.titel), m.text && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 3
+      }
+    }, m.text), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        marginTop: 4
+      }
+    }, m.datum || "", " · ", m.vonName || "")))), naechsterTermin ? /*#__PURE__*/React.createElement("div", {
       style: {
         background: `${typInfoNT.color}12`,
         border: `1px solid ${typInfoNT.color}40`,
@@ -3544,7 +3751,107 @@ function MainApp({
         fontSize: 12,
         color: "#64748b"
       }
-    }, trainingsZugesagt.length, " von ", trainingsMitReaktion.length, " beantworteten Trainings"))), meinGut <= 2 && /*#__PURE__*/React.createElement("div", {
+    }, trainingsZugesagt.length, " von ", trainingsMitReaktion.length, " beantworteten Trainings"))), (() => {
+      const getraenkAnz = meineG.filter(e => e.typ === "getraenk").length;
+      const sonstigesAnz = meineG.filter(e => e.typ === "sonstiges").length;
+      const trainingsAnz = trainingsZugesagt.length;
+      const MEILENSTEINE = [{
+        schwelle: 10,
+        typ: "getraenk",
+        emoji: "🥤",
+        text: "10 Getränke getrunken!"
+      }, {
+        schwelle: 50,
+        typ: "getraenk",
+        emoji: "🍺",
+        text: "50 Getränke getrunken!"
+      }, {
+        schwelle: 100,
+        typ: "getraenk",
+        emoji: "🏅",
+        text: "100 Getränke — Legende!"
+      }, {
+        schwelle: 200,
+        typ: "getraenk",
+        emoji: "🏆",
+        text: "200 Getränke — Hall of Fame!"
+      }, {
+        schwelle: 5,
+        typ: "sonstiges",
+        emoji: "🌭",
+        text: "5x Sonstiges gekauft!"
+      }, {
+        schwelle: 25,
+        typ: "sonstiges",
+        emoji: "🛒",
+        text: "25x Sonstiges — Stammkunde!"
+      }, {
+        schwelle: 10,
+        typ: "training",
+        emoji: "⚡",
+        text: "10 Trainings zugesagt!"
+      }, {
+        schwelle: 25,
+        typ: "training",
+        emoji: "💪",
+        text: "25 Trainings — Super dabei!"
+      }, {
+        schwelle: 50,
+        typ: "training",
+        emoji: "🌟",
+        text: "50 Trainings — Unverzichtbar!"
+      }];
+      const erreicht = MEILENSTEINE.filter(m => {
+        if (m.typ === "getraenk") return getraenkAnz >= m.schwelle;
+        if (m.typ === "sonstiges") return sonstigesAnz >= m.schwelle;
+        if (m.typ === "training") return trainingsAnz >= m.schwelle;
+        return false;
+      });
+      if (erreicht.length === 0) return null;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          background: "rgba(251,191,36,0.06)",
+          border: "1px solid #fbbf2430",
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 16
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: "#fbbf24",
+          fontWeight: 700,
+          marginBottom: 10
+        }
+      }, "🏅 DEINE MEILENSTEINE"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6
+        }
+      }, erreicht.map((m, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          background: "rgba(251,191,36,0.12)",
+          border: "1px solid #fbbf2440",
+          borderRadius: 10,
+          padding: "6px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: 5
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 16
+        }
+      }, m.emoji), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#fde68a",
+          fontWeight: 600
+        }
+      }, m.text)))));
+    })(), meinGut <= 2 && /*#__PURE__*/React.createElement("div", {
       style: {
         background: "rgba(248,113,113,0.1)",
         border: "1px solid rgba(248,113,113,0.3)",
@@ -5192,11 +5499,20 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
+  }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+    schwarzesBrett: schwarzesBrett,
+    cu: cu,
+    toast: toast
+  })), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
     benutzer: benutzer,
     cu: cu,
     toast: toast,
-    eintraege: eintraege
+    eintraege: eintraege,
+    schwarzesBrett: schwarzesBrett
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
