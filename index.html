@@ -3513,7 +3513,16 @@ function MainApp({
         fontWeight: 600,
         textAlign: "center"
       }
-    }, "⚠️ ", meinGut === 0 ? "Kein Guthaben mehr!" : "Guthaben fast aufgebraucht!", " Beim Admin aufladen lassen."), /*#__PURE__*/React.createElement("div", {
+    }, "⚠️ ", meinGut === 0 ? "Kein Guthaben mehr!" : "Guthaben fast aufgebraucht!", " Beim Admin aufladen lassen.", " ", /*#__PURE__*/React.createElement("a", {
+      href: "https://www.paypal.me/HandballEMD",
+      target: "_blank",
+      rel: "noopener noreferrer",
+      style: {
+        color: "#60a5fa",
+        fontWeight: 700,
+        textDecoration: "underline"
+      }
+    }, "💳 Per PayPal einzahlen")), /*#__PURE__*/React.createElement("div", {
       style: {
         background: "rgba(255,255,255,0.03)",
         border: "1px solid #003070",
@@ -4407,7 +4416,7 @@ function MainApp({
         color: "#64748b",
         marginTop: 2
       }
-    }, guthabenAnzahl, " Spieler mit aktivem Guthaben")), /*#__PURE__*/React.createElement("div", {
+    }, guthabenAnzahl, " Spieler mit aktivem Guthaben — fließt erst beim Verbrauch in den Kassenstand ein")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 30
       }
