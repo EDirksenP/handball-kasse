@@ -2080,7 +2080,50 @@ function TermineTab({
         fontSize: 11,
         color: "#fb923c"
       }
-    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), kannBearbeiten && /*#__PURE__*/React.createElement("button", {
+      onClick: async () => {
+        const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+        const datum = new Date(t.datum + "T12:00:00");
+        const wt = wochentage[datum.getDay()];
+        const anzZu = (t.zusagen || []).length;
+        const anzAb = (t.absagen || []).length;
+        const anzOf = (t.vielleicht || []).length;
+        let text = `${typInfo.emoji} *${typInfo.label}: ${t.titel}*\n`;
+        text += `📅 ${wt}, ${fmtD(t.datum)} um ${t.uhrzeit} Uhr\n`;
+        text += `📍 ${t.ort}\n\n`;
+        text += `Bitte in der App zu-/absagen:\n`;
+        text += `👉 https://3hsg-emden-kasse.de\n\n`;
+        if (anzZu > 0 || anzAb > 0 || anzOf > 0) {
+          text += `Stand: ✅ ${anzZu} · ❌ ${anzAb} · ❓ ${anzOf}`;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          toast("✅ WhatsApp-Text kopiert! Jetzt in die Gruppe einfügen.");
+        } catch {
+          toast("⚠️ Kopieren fehlgeschlagen — bitte manuell kopieren.");
+        }
+      },
+      style: {
+        width: "100%",
+        marginTop: 10,
+        padding: "10px",
+        background: "rgba(37,211,102,0.1)",
+        border: "1px solid rgba(37,211,102,0.4)",
+        borderRadius: 10,
+        color: "#25d166",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 16
+      }
+    }, "📲"), " WhatsApp-Text kopieren"), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 12,
         paddingTop: 12,
