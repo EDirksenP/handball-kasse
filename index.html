@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3.Herren HSG Emden</title>
+  <title>3. Herren HSG Emden</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -3126,7 +3126,8 @@ function MainApp({
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
   const [buchKat, setBuchKat] = useState("getraenk"); // "getraenk" | "sonstiges"
-
+  const [buchMannschaftTab, setBuchMannschaftTab] = useState("meine"); // "meine" | "sonstige"
+  const [buchMannschaftWahl, setBuchMannschaftWahl] = useState(cu.mannschaft || "1. Herren");
   const buchArtikel = async (g, typ) => {
     if (!gwS) return toast("⚠️ Bitte erst Spieler auswählen!");
     const sp = spieler.find(s => s.id === gwS);
@@ -4089,63 +4090,114 @@ function MainApp({
     }
   }, "💰 Guthaben")), isAdmin ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchMannschaftTab("meine"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchMannschaftTab === "meine" ? "#2288FF" : "#003070"}`,
+      background: buchMannschaftTab === "meine" ? "rgba(34,136,255,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchMannschaftTab === "meine" ? "#2288FF" : "#64748b",
+      fontWeight: 700,
+      fontSize: 12
+    }
+  }, "👥 Meine Mannschaft"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchMannschaftTab("sonstige"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchMannschaftTab === "sonstige" ? "#a78bfa" : "#003070"}`,
+      background: buchMannschaftTab === "sonstige" ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchMannschaftTab === "sonstige" ? "#a78bfa" : "#64748b",
+      fontWeight: 700,
+      fontSize: 12
+    }
+  }, "🌐 Sonstige")), buchMannschaftTab === "meine" && /*#__PURE__*/React.createElement("select", {
+    value: buchMannschaftWahl,
+    onChange: e => setBuchMannschaftWahl(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 10
+    }
+  }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 12,
       color: "#94a3b8",
       fontWeight: 700,
       marginBottom: 10
     }
-  }, "👤 SPIELER WÄHLEN"), spieler.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "center",
-      color: "#475569",
-      padding: "20px 0"
-    }
-  }, "Noch keine Spieler") : /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 8,
-      marginBottom: 12
-    }
-  }, spieler.map(sp => {
-    const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
-    const g = bu?.guthaben || 0;
-    return /*#__PURE__*/React.createElement("button", {
-      key: sp.id,
-      onClick: () => setGwS(gwS === sp.id ? null : sp.id),
+  }, "👤 SPIELER WÄHLEN — ", buchMannschaftTab === "meine" ? buchMannschaftWahl : "Sonstige Mannschaften"), (() => {
+    const gefilterteSpieler = spieler.filter(sp => {
+      const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+      const spMannschaft = bu?.mannschaft || "1. Herren";
+      return buchMannschaftTab === "meine" ? spMannschaft === buchMannschaftWahl : spMannschaft !== buchMannschaftWahl;
+    });
+    if (gefilterteSpieler.length === 0) return /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "#475569",
+        padding: "20px 0"
+      }
+    }, "Keine Spieler in dieser Auswahl");
+    return /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
-        alignItems: "center",
+        flexWrap: "wrap",
         gap: 8,
-        padding: "8px 14px",
-        borderRadius: 24,
-        cursor: "pointer",
-        border: `2px solid ${gwS === sp.id ? pCol(sp.id) : "#003070"}`,
-        background: gwS === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
-        color: gwS === sp.id ? pCol(sp.id) : "#94a3b8",
-        fontWeight: gwS === sp.id ? 800 : 500,
-        fontSize: 13
+        marginBottom: 12
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 28,
-        height: 28,
-        borderRadius: "50%",
-        background: pCol(sp.id),
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 11,
-        fontWeight: 800,
-        color: "#001A3A"
-      }
-    }, ava(sp.name)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", null, sp.name.split(" ")[0]), zahlart === "guthaben" && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        color: g > 0 ? "#4ade80" : "#f87171"
-      }
-    }, g.toFixed(2), " €")));
-  }))) : (() => {
+    }, gefilterteSpieler.map(sp => {
+      const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+      const g = bu?.guthaben || 0;
+      return /*#__PURE__*/React.createElement("button", {
+        key: sp.id,
+        onClick: () => setGwS(gwS === sp.id ? null : sp.id),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 14px",
+          borderRadius: 24,
+          cursor: "pointer",
+          border: `2px solid ${gwS === sp.id ? pCol(sp.id) : "#003070"}`,
+          background: gwS === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
+          color: gwS === sp.id ? pCol(sp.id) : "#94a3b8",
+          fontWeight: gwS === sp.id ? 800 : 500,
+          fontSize: 13
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          background: pCol(sp.id),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          fontWeight: 800,
+          color: "#001A3A"
+        }
+      }, ava(sp.name)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", null, sp.name.split(" ")[0]), zahlart === "guthaben" && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: g > 0 ? "#4ade80" : "#f87171"
+        }
+      }, g.toFixed(2), " €")));
+    }));
+  })()) : (() => {
     const meinSp = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
     if (meinSp && gwS !== meinSp.id) {
       setTimeout(() => setGwS(meinSp.id), 0);
