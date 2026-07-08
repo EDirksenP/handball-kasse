@@ -8035,7 +8035,7 @@ function TermineTab({
             vorname: bu?.vorname || name.split(" ")[0],
             nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
             handballId: bu?.handballId || "—",
-            trikotnummer: bu?.trikotnummer || "—",
+            trikotnummer: bu?.trikotnummer || " ",
             status: zusagen.includes(name) ? "✅" : "❓"
           };
         });
