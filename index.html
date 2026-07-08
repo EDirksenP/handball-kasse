@@ -5863,4 +5863,5882 @@ ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.c
 
 </script>
 </body>
+</html<script>
+PE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3. Herren HSG Emden</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#00112E;font-family:'Segoe UI',system-ui,sans-serif;}
+    input,select,button{font-family:inherit;}
+    input[type=date]{color-scheme:dark;}
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-thumb{background:#003070;border-radius:2px;}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  firebase.initializeApp({
+    apiKey:"AIzaSyBJjQArwfGWRWtiJ-uy5STiu1ZIROkH7OQ",
+    authDomain:"handball-kasse.firebaseapp.com",
+    projectId:"handball-kasse",
+    storageBucket:"handball-kasse.firebasestorage.app",
+    messagingSenderId:"275232257519",
+    appId:"1:275232257519:web:4754493934b7f0173a321a"
+  });
+  window.db = firebase.firestore();
+</script>
+<script>
+
+const {
+  useState,
+  useEffect
+} = React;
+const col = n => window.db.collection(n);
+const ref = (n, id) => window.db.collection(n).doc(id);
+const AUTH_KEY = "hsg_auth_v3";
+const MANNSCHAFTEN = ["1. Herren", "2. Herren", "3. Herren", "1. Damen", "2. Damen", "3. Damen"];
+const GETRAENKE_DEFAULT = [{
+  name: "Cola",
+  preis: 1.00,
+  emoji: "🥤"
+}, {
+  name: "Wasser",
+  preis: 0.50,
+  emoji: "💧"
+}, {
+  name: "Fanta",
+  preis: 1.00,
+  emoji: "🍊"
+}, {
+  name: "Bier",
+  preis: 1.50,
+  emoji: "🍺"
+}, {
+  name: "Kaffee",
+  preis: 0.80,
+  emoji: "☕"
+}, {
+  name: "Iso",
+  preis: 1.20,
+  emoji: "⚡"
+}];
+const SONSTIGES_DEFAULT = [{
+  name: "Bratwurst",
+  preis: 2.00,
+  emoji: "🌭"
+}, {
+  name: "Zigaretten",
+  preis: 0.50,
+  emoji: "🚬"
+}];
+const STRAFEN_DEFAULT = [{
+  grund: "Zu spät zum Training",
+  betrag: 2.00
+}, {
+  grund: "Handy klingelt in der Kabine",
+  betrag: 5.00
+}, {
+  grund: "Trikot/Ausrüstung vergessen",
+  betrag: 3.00
+}, {
+  grund: "Unentschuldigt gefehlt",
+  betrag: 10.00
+}];
+const TERMIN_TYPEN = {
+  training: {
+    label: "Training",
+    emoji: "🏃",
+    color: "#2288FF"
+  },
+  punktspiel: {
+    label: "Punktspiel",
+    emoji: "🏆",
+    color: "#f87171"
+  },
+  mannschaftsabend: {
+    label: "Mannschaftsabend",
+    emoji: "🍻",
+    color: "#fb923c"
+  },
+  sonstiges: {
+    label: "Sonstiges",
+    emoji: "📌",
+    color: "#a78bfa"
+  }
+};
+const CATS = {
+  getraenk: {
+    label: "Getränk",
+    emoji: "🥤",
+    color: "#2288FF"
+  },
+  sonstiges: {
+    label: "Sonstiges",
+    emoji: "🛒",
+    color: "#a78bfa"
+  },
+  einnahme: {
+    label: "Einnahme",
+    emoji: "💰",
+    color: "#4ade80"
+  },
+  ausgabe: {
+    label: "Ausgabe",
+    emoji: "🛍️",
+    color: "#f87171"
+  },
+  spende: {
+    label: "Spende",
+    emoji: "🤝",
+    color: "#60a5fa"
+  }
+};
+const EMOJIS = ["🥤", "🍺", "☕", "💧", "🍊", "⚡", "🧃", "🫖", "🍵", "🥛", "🍋", "🧊"];
+const COLORS = ["#0066CC", "#4ade80", "#60a5fa", "#f472b6", "#a78bfa", "#34d399", "#fb923c", "#38bdf8"];
+const pCol = id => COLORS[Math.abs(String(id).split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % COLORS.length];
+const ava = name => name.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+const todayStr = () => new Date().toISOString().split("T")[0];
+const fmtD = r => r ? new Date(r + "T12:00:00").toLocaleDateString("de-DE") : "";
+const mkU = (v, n) => (v.trim().toLowerCase() + "." + n.trim().toLowerCase()).replace(/\s+/g, "");
+const sv = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {}
+};
+const ld = (k, fb) => {
+  try {
+    const r = localStorage.getItem(k);
+    return r ? JSON.parse(r) : fb;
+  } catch {
+    return fb;
+  }
+};
+const IS = {
+  width: "100%",
+  marginTop: 8,
+  padding: "13px 16px",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid #003070",
+  borderRadius: 12,
+  color: "#e2e8f0",
+  fontSize: 15,
+  outline: "none",
+  boxSizing: "border-box"
+};
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function Login({
+  onLogin,
+  benutzer
+}) {
+  const [u, setU] = useState("");
+  const [p, setP] = useState("");
+  const [err, setErr] = useState("");
+  const [shake, setShake] = useState(false);
+  const [zeigeImpressum, setZeigeImpressum] = useState(false);
+  const go = () => {
+    const b = benutzer.find(x => x.benutzername === u.trim().toLowerCase());
+    if (!b) {
+      doShake("❌ Benutzername unbekannt");
+      return;
+    }
+    if (b.passwort !== p) {
+      doShake("❌ Falsches Passwort");
+      return;
+    }
+    const ud = {
+      id: b.id,
+      benutzername: b.benutzername,
+      rolle: b.rolle,
+      vorname: b.vorname,
+      nachname: b.nachname,
+      mannschaft: b.mannschaft || ""
+    };
+    sv(AUTH_KEY, ud);
+    onLogin(ud);
+  };
+  const doShake = msg => {
+    setErr(msg);
+    setShake(true);
+    setP("");
+    setTimeout(() => setShake(false), 500);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#e2e8f0",
+      padding: 32
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 100,
+      height: 100,
+      borderRadius: 20,
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 48,
+      marginBottom: 16
+    }
+  }, "🤾"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800,
+      marginBottom: 4
+    }
+  }, "3. Herren HSG Emden"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8",
+      marginBottom: 32
+    }
+  }, "3. Herren HSG Emden — Bitte anmelden"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: "100%",
+      maxWidth: 320,
+      animation: shake ? "shake 0.4s ease" : "none"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      display: "block"
+    }
+  }, "BENUTZERNAME"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "vorname.nachname",
+    value: u,
+    onChange: e => {
+      setU(e.target.value);
+      setErr("");
+    },
+    onKeyDown: e => e.key === "Enter" && go(),
+    autoFocus: true,
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      display: "block",
+      marginTop: 14
+    }
+  }, "PASSWORT"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    placeholder: "Passwort eingeben...",
+    value: p,
+    onChange: e => {
+      setP(e.target.value);
+      setErr("");
+    },
+    onKeyDown: e => e.key === "Enter" && go(),
+    style: {
+      ...IS,
+      border: `2px solid ${err ? "#f87171" : "#003070"}`
+    }
+  }), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "#f87171",
+      fontSize: 12,
+      fontWeight: 600,
+      marginTop: 8
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    onClick: go,
+    style: {
+      width: "100%",
+      marginTop: 18,
+      padding: "15px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 14,
+      color: "white",
+      fontSize: 15,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "🔓 Anmelden")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 36,
+      fontSize: 12,
+      color: "#334155"
+    }
+  }, "🔒 Geschützte Vereinskasse"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeImpressum(true),
+    style: {
+      marginTop: 14,
+      background: "none",
+      border: "none",
+      color: "#334155",
+      fontSize: 11,
+      textDecoration: "underline",
+      cursor: "pointer"
+    }
+  }, "Impressum & Kontakt"), zeigeImpressum && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setZeigeImpressum(false),
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: "#001A3A",
+      border: "2px solid #0055AA",
+      borderRadius: 16,
+      padding: 24,
+      width: "100%",
+      maxWidth: 360
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 14
+    }
+  }, "📄 Impressum & Kontakt"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8",
+      lineHeight: 1.7
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      color: "#e2e8f0",
+      marginBottom: 2
+    }
+  }, "Verantwortlich für diese App:"), /*#__PURE__*/React.createElement("div", null, "Eike Dirksen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, "📧 eike.dirksen@gmail.com"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, "Diese App ist ein privates, nicht-kommerzielles Projekt zur internen Verwaltung der Getränke- und Strafenkasse der 3. Herren der HSG Emden. Sie steht ausschließlich Mannschaftsmitgliedern zur Verfügung.")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeImpressum(false),
+    style: {
+      width: "100%",
+      marginTop: 18,
+      padding: "10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      borderRadius: 10,
+      color: "#94a3b8",
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, "Schließen"))));
+}
+
+// ── BENUTZERVERWALTUNG ────────────────────────────────────────
+function BenutzerTab({
+  benutzer,
+  cu,
+  toast,
+  eintraege,
+  schwarzesBrett
+}) {
+  const [form, setForm] = useState({
+    vorname: "",
+    nachname: "",
+    passwort: "",
+    rolle: "mitglied",
+    mannschaft: "1. Herren",
+    geburtstag: ""
+  });
+  const [edit, setEdit] = useState(null);
+  const [gutModal, setGutModal] = useState(null);
+  const [gutVal, setGutVal] = useState("");
+  const bn = (v, n) => mkU(v, n);
+  const sicherungErstellen = () => {
+    if (!eintraege || eintraege.length === 0) return toast("⚠️ Keine Buchungen vorhanden!");
+    const sicherung = {
+      erstellt: new Date().toISOString(),
+      erstelltVon: cu.benutzername,
+      anzahlEintraege: eintraege.length,
+      eintraege: eintraege.map(e => {
+        const {
+          id,
+          ...rest
+        } = e;
+        return {
+          id,
+          ...rest
+        };
+      })
+    };
+    const json = JSON.stringify(sicherung, null, 2);
+    const blob = new Blob([json], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const datum = new Date().toISOString().split("T")[0];
+    a.href = url;
+    a.download = `hsg-kasse-sicherung-${datum}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`✅ Sicherung mit ${eintraege.length} Buchungen heruntergeladen!`);
+  };
+  const add = async () => {
+    if (!form.vorname.trim() || !form.nachname.trim()) return toast("Vor- und Nachname erforderlich!");
+    if (!form.passwort.trim() || form.passwort.length < 4) return toast("Passwort mind. 4 Zeichen!");
+    const b = bn(form.vorname, form.nachname);
+    if (benutzer.find(x => x.benutzername === b)) return toast("Benutzername bereits vergeben!");
+    await col("benutzer").add({
+      vorname: form.vorname.trim(),
+      nachname: form.nachname.trim(),
+      benutzername: b,
+      passwort: form.passwort.trim(),
+      rolle: form.rolle,
+      mannschaft: form.mannschaft,
+      guthaben: 0,
+      geburtstag: form.geburtstag || ""
+    });
+    setForm({
+      vorname: "",
+      nachname: "",
+      passwort: "",
+      rolle: "mitglied",
+      mannschaft: "1. Herren",
+      geburtstag: ""
+    });
+    toast("✅ Benutzer angelegt!");
+  };
+  const del = async id => {
+    if (id === cu.id) return toast("Du kannst dich nicht selbst löschen!");
+    await ref("benutzer", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEdit = async () => {
+    if (!edit.vorname.trim() || !edit.nachname.trim()) return;
+    await ref("benutzer", edit.id).set({
+      vorname: edit.vorname.trim(),
+      nachname: edit.nachname.trim(),
+      benutzername: bn(edit.vorname, edit.nachname),
+      passwort: edit.passwort.trim(),
+      rolle: edit.rolle,
+      mannschaft: edit.mannschaft || "1. Herren",
+      guthaben: edit.guthaben || 0,
+      geburtstag: edit.geburtstag || "",
+      handballId: edit.handballId || "",
+      trikotnummer: edit.trikotnummer || ""
+    });
+    setEdit(null);
+    toast("✅ Gespeichert");
+  };
+  const aufladen = async () => {
+    const b = parseFloat(gutVal.replace(",", "."));
+    if (!b || b <= 0) return toast("Bitte gültigen Betrag eingeben!");
+    await ref("benutzer", gutModal.id).update({
+      guthaben: (gutModal.guthaben || 0) + b
+    });
+    setGutModal(null);
+    setGutVal("");
+    toast(`✅ ${b.toFixed(2)} € aufgeladen!`);
+  };
+  const admins = benutzer.filter(b => b.rolle === "admin");
+  const gruppen = MANNSCHAFTEN.map(m => ({
+    name: m,
+    list: benutzer.filter(b => b.rolle !== "admin" && (b.mannschaft || "1. Herren") === m)
+  })).filter(g => g.list.length > 0);
+  const card = b => /*#__PURE__*/React.createElement("div", {
+    key: b.id
+  }, edit?.id === b.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid #003070",
+      borderRadius: 12,
+      padding: 14,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: edit.vorname,
+    onChange: e => setEdit(x => ({
+      ...x,
+      vorname: e.target.value
+    })),
+    placeholder: "Vorname",
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    value: edit.nachname,
+    onChange: e => setEdit(x => ({
+      ...x,
+      nachname: e.target.value
+    })),
+    placeholder: "Nachname",
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      marginBottom: 8,
+      fontWeight: 600
+    }
+  }, "👤 ", bn(edit.vorname, edit.nachname)), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: edit.passwort,
+    onChange: e => setEdit(x => ({
+      ...x,
+      passwort: e.target.value
+    })),
+    placeholder: "Passwort",
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("select", {
+    value: edit.mannschaft || "1. Herren",
+    onChange: e => setEdit(x => ({
+      ...x,
+      mannschaft: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 8
+    }
+  }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement("select", {
+    value: edit.rolle,
+    onChange: e => setEdit(x => ({
+      ...x,
+      rolle: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "mitglied"
+  }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
+    value: "strafenwart"
+  }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
+    value: "eventorga"
+  }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "admin"
+  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "🎂 GEBURTSTAG (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: edit.geburtstag || "",
+    onChange: e => setEdit(x => ({
+      ...x,
+      geburtstag: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "🏐 HANDBALL-ID (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. 12345678",
+    value: edit.handballId || "",
+    onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "👕 TRIKOTNUMMER (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "z.B. 7",
+    value: edit.trikotnummer || "",
+    onChange: e => setEdit(x => ({...x, trikotnummer: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: saveEdit,
+    style: {
+      flex: 1,
+      padding: "10px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700
+    }
+  }, "✓ Speichern"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEdit(null),
+    style: {
+      padding: "10px 14px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer"
+    }
+  }, "✕"))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "12px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${b.rolle === "admin" ? "#2288FF33" : "#003070"}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      background: b.rolle === "admin" ? "linear-gradient(135deg,#0066CC,#2288FF)" : pCol(b.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 800,
+      color: "white",
+      flexShrink: 0
+    }
+  }, ava(b.vorname + " " + b.nachname)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, b.vorname, " ", b.nachname), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, "👤 ", b.benutzername), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {
+    style: {fontSize:11, color:"#60a5fa", marginTop:1}
+  }, "👕 #", b.trikotnummer), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#f472b6",
+      marginTop: 1
+    }
+  }, "🎂 ", fmtD(b.geburtstag)), b.rolle === "strafenwart" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#fb923c",
+      fontWeight: 700,
+      marginTop: 2
+    }
+  }, "⚖️ Strafenwart"), b.rolle === "eventorga" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#a78bfa",
+      fontWeight: 700,
+      marginTop: 2
+    }
+  }, "📅 Eventorganisation"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: (b.guthaben || 0) > 0 ? "#4ade80" : "#f87171",
+      marginTop: 2
+    }
+  }, "💰 ", (b.guthaben || 0).toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 5
+    }
+  }, b.rolle !== "admin" && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setGutModal(b);
+      setGutVal("");
+    },
+    style: {
+      background: "rgba(74,222,128,0.1)",
+      border: "1px solid rgba(74,222,128,0.3)",
+      color: "#4ade80",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "💰"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEdit(b),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "✏️"), b.id !== cu.id && /*#__PURE__*/React.createElement("button", {
+    onClick: () => del(b.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "🗑️"))));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "👑 Benutzerverwaltung"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(74,222,128,0.06)",
+      border: "1px solid #4ade8033",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#4ade80",
+      fontWeight: 700,
+      marginBottom: 6
+    }
+  }, "💾 Sicherung"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginBottom: 12
+    }
+  }, "Lädt alle Buchungen (Getränke, Einnahmen, Ausgaben, Spenden) als Datei herunter."), /*#__PURE__*/React.createElement("button", {
+    onClick: sicherungErstellen,
+    style: {
+      width: "100%",
+      padding: "12px",
+      background: "linear-gradient(135deg,#16a34a,#4ade80)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+    schwarzesBrett: schwarzesBrett || [],
+    cu: cu,
+    toast: toast
+  }), gutModal && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      zIndex: 50,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "#001A3A",
+      border: "2px solid #0055AA",
+      borderRadius: 16,
+      padding: 24,
+      width: "100%",
+      maxWidth: 320
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 4
+    }
+  }, "💰 Guthaben aufladen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8",
+      marginBottom: 8
+    }
+  }, gutModal.vorname, " ", gutModal.nachname), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#4ade80",
+      marginBottom: 16,
+      fontWeight: 700
+    }
+  }, "Aktuell: ", (gutModal.guthaben || 0).toFixed(2), " €"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "BETRAG (€)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    placeholder: "z.B. 10.00",
+    value: gutVal,
+    onChange: e => setGutVal(e.target.value),
+    style: IS
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: aufladen,
+    style: {
+      flex: 1,
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Aufladen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setGutModal(null);
+      setGutVal("");
+    },
+    style: {
+      padding: "12px 16px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(34,136,255,0.06)",
+      border: "1px solid #2288FF33",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neuer Benutzer"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "VORNAME"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Max",
+    value: form.vorname,
+    onChange: e => setForm(f => ({
+      ...f,
+      vorname: e.target.value
+    })),
+    style: IS
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "NACHNAME"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Mustermann",
+    value: form.nachname,
+    onChange: e => setForm(f => ({
+      ...f,
+      nachname: e.target.value
+    })),
+    style: IS
+  }))), form.vorname && form.nachname && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      marginTop: 6,
+      fontWeight: 600
+    }
+  }, "👤 ", bn(form.vorname, form.nachname)), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "PASSWORT"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Mind. 4 Zeichen",
+    value: form.passwort,
+    onChange: e => setForm(f => ({
+      ...f,
+      passwort: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "MANNSCHAFT"), /*#__PURE__*/React.createElement("select", {
+    value: form.mannschaft,
+    onChange: e => setForm(f => ({
+      ...f,
+      mannschaft: e.target.value
+    })),
+    style: IS
+  }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "ROLLE"), /*#__PURE__*/React.createElement("select", {
+    value: form.rolle,
+    onChange: e => setForm(f => ({
+      ...f,
+      rolle: e.target.value
+    })),
+    style: IS
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "mitglied"
+  }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
+    value: "strafenwart"
+  }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
+    value: "eventorga"
+  }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "admin"
+  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "🎂 GEBURTSTAG (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: form.geburtstag || "",
+    onChange: e => setForm(f => ({
+      ...f,
+      geburtstag: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: add,
+    style: {
+      width: "100%",
+      marginTop: 14,
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#2288FF",
+      fontWeight: 700,
+      letterSpacing: 1,
+      marginBottom: 8
+    }
+  }, "👑 ADMINS"), admins.map(b => card(b))), gruppen.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g.name
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      marginBottom: 8,
+      marginTop: 14
+    }
+  }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
+}
+
+// ── STRAFENKATALOG ───────────────────────────────────────────
+function StrafenTab({
+  benutzer,
+  spieler,
+  strafenEintraege,
+  toast,
+  cu
+}) {
+  const [katalog, setKatalog] = useState([]);
+  const [katalogLoading, setKatalogLoading] = useState(true);
+  const [gForm, setGForm] = useState({
+    grund: "",
+    betrag: ""
+  });
+  const [editK, setEditK] = useState(null);
+  const [gwSp, setGwSp] = useState(null);
+  useEffect(() => {
+    return col("strafenkatalog").onSnapshot(s => {
+      const l = s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (l.length === 0) STRAFEN_DEFAULT.forEach(st => col("strafenkatalog").add(st));
+      setKatalog(l);
+      setKatalogLoading(false);
+    });
+  }, []);
+  const addKatalog = async () => {
+    const b = parseFloat(gForm.betrag.replace(",", "."));
+    if (!gForm.grund.trim() || !b || b <= 0) return toast("Grund und Betrag erforderlich!");
+    await col("strafenkatalog").add({
+      grund: gForm.grund.trim(),
+      betrag: b
+    });
+    setGForm({
+      grund: "",
+      betrag: ""
+    });
+    toast("✅ Strafe zum Katalog hinzugefügt!");
+  };
+  const delKatalog = async id => {
+    await ref("strafenkatalog", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditK = async () => {
+    const b = parseFloat(String(editK.betrag).replace(",", "."));
+    if (!editK.grund.trim() || !b) return;
+    await ref("strafenkatalog", editK.id).set({
+      grund: editK.grund.trim(),
+      betrag: b
+    });
+    setEditK(null);
+    toast("✅ Gespeichert");
+  };
+
+  // Nur Spieler der eigenen Mannschaft anzeigen
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const eigeneSpieler = spieler.filter(sp => {
+    const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+    return bu && (bu.mannschaft || "1. Herren") === meineMannschaft;
+  });
+  const verhaengen = async st => {
+    if (!gwSp) return toast("⚠️ Bitte erst Spieler auswählen!");
+    const sp = eigeneSpieler.find(s => s.id === gwSp);
+    if (!sp) return toast("⚠️ Spieler gehört nicht zu deiner Mannschaft!");
+    await col("strafen").add({
+      grund: st.grund,
+      betrag: st.betrag,
+      person: sp.name,
+      spielerId: sp.id,
+      datum: fmtD(todayStr()),
+      datumRaw: todayStr(),
+      zeit: new Date().toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      bezahlt: false,
+      ts: Date.now()
+    });
+    toast(`⚖️ ${st.grund} (${st.betrag.toFixed(2)} €) für ${sp.name} verhängt!`);
+  };
+  const bestaetigen = async e => {
+    await ref("strafen", e.id).update({
+      bezahlt: true
+    });
+    toast(`✅ Zahlung von ${e.person} bestätigt!`);
+  };
+  const stornieren = async e => {
+    await ref("strafen", e.id).update({
+      bezahlt: false
+    });
+    toast(`↩️ Zahlung wieder als offen markiert`);
+  };
+  const loeschen = async id => {
+    await ref("strafen", id).delete();
+    toast("🗑️ Strafe gelöscht");
+  };
+  const eigeneSpielerIds = new Set(eigeneSpieler.map(sp => sp.id));
+  const strafenEigeneMannschaft = strafenEintraege.filter(e => eigeneSpielerIds.has(e.spielerId));
+  const [vFilter, setVFilter] = useState("alle");
+  const gefilterteStrafen = [...strafenEigeneMannschaft].sort((a, b) => (b.ts || 0) - (a.ts || 0)).filter(e => vFilter === "alle" || (vFilter === "bezahlt" ? e.bezahlt : !e.bezahlt));
+  const bezahlteStrafen = strafenEigeneMannschaft.filter(e => e.bezahlt);
+  const offeneStrafen = strafenEigeneMannschaft.filter(e => !e.bezahlt);
+  const summeBezahlt = bezahlteStrafen.reduce((s, e) => s + e.betrag, 0);
+  const summeOffen = offeneStrafen.reduce((s, e) => s + e.betrag, 0);
+  const ZWEI_WOCHEN_MS_TOP = 14 * 24 * 60 * 60 * 1000;
+  const ueberfaelligeStrafen = offeneStrafen.filter(e => e.ts && Date.now() - e.ts > ZWEI_WOCHEN_MS_TOP);
+  const exportiereOffeneStrafen = async () => {
+    if (offeneStrafen.length === 0) return toast("✅ Keine offenen Strafen vorhanden!");
+    const sortiert = [...offeneStrafen].sort((a, b) => (a.person || "").localeCompare(b.person || ""));
+    let text = `⚖️ Offene Strafen — ${meineMannschaft}\n`;
+    text += `Stand: ${new Date().toLocaleDateString("de-DE")}\n\n`;
+    sortiert.forEach(e => {
+      const ueberf = e.ts && Date.now() - e.ts > ZWEI_WOCHEN_MS_TOP;
+      text += `${ueberf ? "⚠️ " : "• "}${e.person}: ${e.grund} — ${e.betrag.toFixed(2)} €\n`;
+    });
+    text += `\n💰 Summe offen: ${summeOffen.toFixed(2)} €`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("✅ In Zwischenablage kopiert! Jetzt z.B. bei WhatsApp einfügen.");
+    } catch {
+      toast("⚠️ Kopieren fehlgeschlagen — bitte manuell markieren.");
+    }
+  };
+  if (katalogLoading) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "⚖️ Strafenkatalog"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: ueberfaelligeStrafen.length > 0 ? 10 : 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#14532D,#052e16)",
+      border: "2px solid #16a34a",
+      borderRadius: 15,
+      padding: "16px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#86efac"
+    }
+  }, "✅ Bezahlt"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900,
+      color: "#4ade80",
+      marginTop: 4
+    }
+  }, summeBezahlt.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#7C2D12,#451A03)",
+      border: "2px solid #C2410C",
+      borderRadius: 15,
+      padding: "16px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#fdba74"
+    }
+  }, "⏳ Noch offen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900,
+      color: "#fb923c",
+      marginTop: 4
+    }
+  }, summeOffen.toFixed(2), " €"))), ueberfaelligeStrafen.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(248,113,113,0.12)",
+      border: "1px solid #f87171",
+      borderRadius: 14,
+      padding: "12px 16px",
+      marginBottom: 20,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24
+    }
+  }, "⚠️"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#f87171"
+    }
+  }, ueberfaelligeStrafen.length, " überfällige ", ueberfaelligeStrafen.length === 1 ? "Strafe" : "Strafen", " (über 14 Tage offen)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#fca5a5",
+      marginTop: 2
+    }
+  }, "Bitte bei den betroffenen Spielern nachfragen"))), /*#__PURE__*/React.createElement("button", {
+    onClick: exportiereOffeneStrafen,
+    style: {
+      width: "100%",
+      padding: "12px",
+      marginBottom: 20,
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid #003070",
+      borderRadius: 12,
+      color: "#94a3b8",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, "📋 Offene Strafen als Text exportieren"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "👤 SPIELER WÄHLEN — ", meineMannschaft), eigeneSpieler.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "20px 0",
+      marginBottom: 12,
+      fontSize: 13
+    }
+  }, "Keine Spieler in deiner Mannschaft (", meineMannschaft, ") gefunden.") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, eigeneSpieler.map(sp => /*#__PURE__*/React.createElement("button", {
+    key: sp.id,
+    onClick: () => setGwSp(gwSp === sp.id ? null : sp.id),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "8px 14px",
+      borderRadius: 24,
+      cursor: "pointer",
+      border: `2px solid ${gwSp === sp.id ? pCol(sp.id) : "#003070"}`,
+      background: gwSp === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
+      color: gwSp === sp.id ? pCol(sp.id) : "#94a3b8",
+      fontWeight: gwSp === sp.id ? 800 : 500,
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 28,
+      height: 28,
+      borderRadius: "50%",
+      background: pCol(sp.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      fontWeight: 800,
+      color: "#001A3A"
+    }
+  }, ava(sp.name)), sp.name.split(" ")[0]))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "⚖️ STRAFE VERHÄNGEN"), katalog.map(st => /*#__PURE__*/React.createElement("div", {
+    key: st.id
+  }, editK?.id === st.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: editK.grund,
+    onChange: e => setEditK(x => ({
+      ...x,
+      grund: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editK.betrag,
+    onChange: e => setEditK(x => ({
+      ...x,
+      betrag: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditK,
+    style: {
+      padding: "0 12px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700,
+      height: 48
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditK(null),
+    style: {
+      padding: "0 10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer",
+      height: 48
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "12px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: gwSp ? "rgba(251,146,60,0.08)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${gwSp ? "#fb923c44" : "#003070"}`
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => verhaengen(st),
+    disabled: !gwSp,
+    style: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      color: gwSp ? "#e2e8f0" : "#475569",
+      cursor: gwSp ? "pointer" : "default",
+      padding: 0,
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, st.grund), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 800,
+      color: "#fb923c",
+      fontSize: 15
+    }
+  }, st.betrag.toFixed(2), " €")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditK(st),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delKatalog(st.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "🗑️")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(251,146,60,0.06)",
+      border: "1px solid #fb923c33",
+      borderRadius: 14,
+      padding: 16,
+      marginTop: 20,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#fb923c",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neue Strafe zum Katalog"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Grund, z.B. Zu spät zum Training",
+    value: gForm.grund,
+    onChange: e => setGForm(f => ({
+      ...f,
+      grund: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "Betrag (€)",
+    value: gForm.betrag,
+    onChange: e => setGForm(f => ({
+      ...f,
+      betrag: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addKatalog,
+    style: {
+      width: "100%",
+      marginTop: 10,
+      padding: "12px",
+      background: "linear-gradient(135deg,#C2410C,#fb923c)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Zum Katalog hinzufügen")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      margin: "20px 0 10px"
+    }
+  }, "📋 Strafen-Verlauf"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, [["alle", "Alle"], ["offen", "⏳ Offen"], ["bezahlt", "✅ Bezahlt"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => setVFilter(k),
+    style: {
+      padding: "5px 11px",
+      borderRadius: 20,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600,
+      border: `1px solid ${vFilter === k ? "#fb923c" : "#003070"}`,
+      background: vFilter === k ? "rgba(251,146,60,0.2)" : "rgba(255,255,255,0.03)",
+      color: vFilter === k ? "#fb923c" : "#64748b"
+    }
+  }, l))), gefilterteStrafen.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "📭 Keine Strafen gefunden") : gefilterteStrafen.map(e => {
+    const ZWEI_WOCHEN_MS = 14 * 24 * 60 * 60 * 1000;
+    const ueberfaellig = !e.bezahlt && e.ts && Date.now() - e.ts > ZWEI_WOCHEN_MS;
+    return /*#__PURE__*/React.createElement("div", {
+      key: e.id,
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${ueberfaellig ? "#f8717155" : e.bezahlt ? "#4ade8025" : "#fb923c25"}`,
+        borderLeft: `3px solid ${ueberfaellig ? "#f87171" : e.bezahlt ? "#4ade80" : "#fb923c"}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginBottom: 9,
+        display: "flex",
+        alignItems: "center",
+        gap: 11
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 20
+      }
+    }, e.bezahlt ? "✅" : ueberfaellig ? "⚠️" : "⚖️"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, e.grund), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 2
+      }
+    }, "👤 ", e.person), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: ueberfaellig ? "#f87171" : "#475569",
+        marginTop: 2,
+        fontWeight: ueberfaellig ? 700 : 400
+      }
+    }, "📅 ", e.datum, " • ", e.zeit, " • ", e.bezahlt ? "✅ Bezahlt" : ueberfaellig ? "⚠️ Überfällig (>14 Tage)" : "⏳ Offen")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 5
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        fontWeight: 800,
+        color: ueberfaellig ? "#f87171" : e.bezahlt ? "#4ade80" : "#fb923c"
+      }
+    }, "+", e.betrag.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5
+      }
+    }, e.bezahlt ? /*#__PURE__*/React.createElement("button", {
+      onClick: () => stornieren(e),
+      style: {
+        background: "rgba(148,163,184,0.1)",
+        border: "1px solid rgba(148,163,184,0.3)",
+        color: "#94a3b8",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "↩️ Offen") : /*#__PURE__*/React.createElement("button", {
+      onClick: () => bestaetigen(e),
+      style: {
+        background: "rgba(74,222,128,0.1)",
+        border: "1px solid rgba(74,222,128,0.3)",
+        color: "#4ade80",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "✓ Bezahlt"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => loeschen(e.id),
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        color: "#f87171",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "🗑️"))));
+  }));
+}
+
+// ── TERMINE ──────────────────────────────────────────────────
+function TermineTab({
+  benutzer,
+  spieler,
+  termine,
+  toast,
+  cu,
+  kannBearbeiten
+}) {
+  const [form, setForm] = useState({
+    typ: "training",
+    titel: "",
+    ort: "",
+    datum: todayStr(),
+    uhrzeit: "18:00",
+    wiederholen: false,
+    wiederholenAnzahl: 8
+  });
+  const [editT, setEditT] = useState(null);
+  const [zeigeForm, setZeigeForm] = useState(false);
+  const [offenAdminVote, setOffenAdminVote] = useState(null);
+  const [vielleichtModal, setVielleichtModal] = useState(null); // {terminId, spielerName}
+  const [vielleichtGrund, setVielleichtGrund] = useState("");
+
+  // Nur Termine der eigenen Mannschaft
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const eigeneTermine = termine.filter(t => (t.mannschaft || "1. Herren") === meineMannschaft);
+  const meinSpieler = spieler.find(sp => sp.name === cu.vorname + " " + cu.nachname);
+
+  // Alle Spieler der eigenen Mannschaft (für "wer hat nicht abgestimmt" + Admin-Abstimmung)
+  const eigeneSpieler = spieler.filter(sp => {
+    const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+    return bu && (bu.mannschaft || "1. Herren") === meineMannschaft;
+  });
+  const addTermin = async () => {
+    if (!form.titel.trim()) return toast("⚠️ Bitte einen Titel angeben!");
+    if (!form.ort.trim()) return toast("⚠️ Bitte einen Ort angeben!");
+    const anzahl = form.wiederholen ? Math.max(1, Math.min(52, parseInt(form.wiederholenAnzahl) || 1)) : 1;
+    const startDatum = new Date(form.datum + "T12:00:00");
+    for (let i = 0; i < anzahl; i++) {
+      const termDatum = new Date(startDatum);
+      termDatum.setDate(termDatum.getDate() + i * 7);
+      const datumStr = termDatum.toISOString().split("T")[0];
+      await col("termine").add({
+        typ: form.typ,
+        titel: form.titel.trim(),
+        ort: form.ort.trim(),
+        datum: datumStr,
+        uhrzeit: form.uhrzeit,
+        mannschaft: meineMannschaft,
+        zusagen: [],
+        absagen: [],
+        ts: Date.now() + i
+      });
+    }
+    setForm({
+      typ: "training",
+      titel: "",
+      ort: "",
+      datum: todayStr(),
+      uhrzeit: "18:00",
+      wiederholen: false,
+      wiederholenAnzahl: 8
+    });
+    setZeigeForm(false);
+    toast(anzahl > 1 ? `✅ ${anzahl} Termine angelegt!` : "✅ Termin angelegt!");
+  };
+  const saveEditT = async () => {
+    if (!editT.titel.trim() || !editT.ort.trim()) return toast("⚠️ Titel und Ort erforderlich!");
+    await ref("termine", editT.id).set({
+      typ: editT.typ,
+      titel: editT.titel.trim(),
+      ort: editT.ort.trim(),
+      datum: editT.datum,
+      uhrzeit: editT.uhrzeit,
+      mannschaft: editT.mannschaft || meineMannschaft,
+      zusagen: editT.zusagen || [],
+      absagen: editT.absagen || [],
+      ts: editT.ts
+    });
+    setEditT(null);
+    toast("✅ Gespeichert");
+  };
+  const loeschenTermin = async id => {
+    await ref("termine", id).delete();
+    toast("🗑️ Termin gelöscht");
+  };
+  const reagieren = async (termin, status, spielerName, grund) => {
+    const name = spielerName || meinSpieler?.name;
+    if (!name) return toast("⚠️ Kein Spieler-Profil gefunden!");
+    if (spielerName && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
+    if (status === "vielleicht" && !grund?.trim()) return toast("⚠️ Bitte einen Grund angeben!");
+    let zusagen = (termin.zusagen || []).filter(n => n !== name);
+    let absagen = (termin.absagen || []).filter(n => n !== name);
+    let vielleicht = (termin.vielleicht || []).filter(v => (v.name || v) !== name);
+    if (status === "zusage") zusagen.push(name);
+    if (status === "absage") absagen.push(name);
+    if (status === "vielleicht") vielleicht.push({
+      name,
+      grund: grund.trim()
+    });
+    await ref("termine", termin.id).update({
+      zusagen,
+      absagen,
+      vielleicht
+    });
+    toast(status === "zusage" ? `✅ ${name} zugesagt!` : status === "absage" ? `❌ ${name} abgesagt!` : `❓ ${name}: Vielleicht`);
+  };
+  const oeffneVielleicht = (termin, spielerName) => {
+    setVielleichtModal({
+      termin,
+      spielerName
+    });
+    setVielleichtGrund("");
+  };
+  const sendeVielleicht = async () => {
+    if (!vielleichtGrund.trim()) return toast("⚠️ Bitte einen Grund angeben!");
+    await reagieren(vielleichtModal.termin, "vielleicht", vielleichtModal.spielerName, vielleichtGrund);
+    setVielleichtModal(null);
+    setVielleichtGrund("");
+  };
+  const statusVon = (termin, name) => {
+    if ((termin.zusagen || []).includes(name)) return "zusage";
+    if ((termin.absagen || []).includes(name)) return "absage";
+    if ((termin.vielleicht || []).some(v => (v.name || v) === name)) return "vielleicht";
+    return null;
+  };
+  const meinStatus = termin => {
+    if (!meinSpieler) return null;
+    if ((termin.zusagen || []).includes(meinSpieler.name)) return "zusage";
+    if ((termin.absagen || []).includes(meinSpieler.name)) return "absage";
+    if ((termin.vielleicht || []).some(v => (v.name || v) === meinSpieler.name)) return "vielleicht";
+    return null;
+  };
+  const sortierteTermine = [...eigeneTermine].sort((a, b) => {
+    const da = new Date(a.datum + "T" + (a.uhrzeit || "00:00"));
+    const db = new Date(b.datum + "T" + (b.uhrzeit || "00:00"));
+    return da - db;
+  });
+  const heute = todayStr();
+  const kommendeTermine = sortierteTermine.filter(t => t.datum >= heute);
+  const vergangeneTermine = sortierteTermine.filter(t => t.datum < heute).reverse();
+  const [zeigeVergangene, setZeigeVergangene] = useState(false);
+  const terminCard = t => {
+    const typInfo = TERMIN_TYPEN[t.typ] || TERMIN_TYPEN.sonstiges;
+    const status = meinStatus(t);
+    const anzZusagen = (t.zusagen || []).length;
+    const anzAbsagen = (t.absagen || []).length;
+    const anzVielleicht = (t.vielleicht || []).length;
+    const nichtAbgestimmt = eigeneSpieler.filter(sp => !(t.zusagen || []).includes(sp.name) && !(t.absagen || []).includes(sp.name) && !(t.vielleicht || []).some(v => (v.name || v) === sp.name));
+    return /*#__PURE__*/React.createElement("div", {
+      key: t.id
+    }, editT?.id === t.id ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid #003070",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        marginBottom: 10,
+        flexWrap: "wrap"
+      }
+    }, Object.entries(TERMIN_TYPEN).map(([key, info]) => /*#__PURE__*/React.createElement("button", {
+      key: key,
+      onClick: () => setEditT(x => ({
+        ...x,
+        typ: key
+      })),
+      style: {
+        padding: "6px 10px",
+        borderRadius: 8,
+        cursor: "pointer",
+        border: `2px solid ${editT.typ === key ? info.color : "#003070"}`,
+        background: editT.typ === key ? `${info.color}22` : "rgba(255,255,255,0.03)",
+        color: editT.typ === key ? info.color : "#94a3b8",
+        fontSize: 11,
+        fontWeight: 700
+      }
+    }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("input", {
+      value: editT.titel,
+      onChange: e => setEditT(x => ({
+        ...x,
+        titel: e.target.value
+      })),
+      placeholder: "Titel",
+      style: {
+        ...IS,
+        marginTop: 0,
+        marginBottom: 8
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      value: editT.ort,
+      onChange: e => setEditT(x => ({
+        ...x,
+        ort: e.target.value
+      })),
+      placeholder: "Ort",
+      style: {
+        ...IS,
+        marginTop: 0,
+        marginBottom: 8
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "date",
+      value: editT.datum,
+      onChange: e => setEditT(x => ({
+        ...x,
+        datum: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: editT.uhrzeit,
+      onChange: e => setEditT(x => ({
+        ...x,
+        uhrzeit: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: saveEditT,
+      style: {
+        flex: 1,
+        padding: "10px",
+        background: "#4ade8022",
+        border: "1px solid #4ade80",
+        color: "#4ade80",
+        borderRadius: 10,
+        cursor: "pointer",
+        fontWeight: 700
+      }
+    }, "✓ Speichern"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditT(null),
+      style: {
+        padding: "10px 14px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid #003070",
+        color: "#94a3b8",
+        borderRadius: 10,
+        cursor: "pointer"
+      }
+    }, "✕"))) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${typInfo.color}30`,
+        borderLeft: `3px solid ${typInfo.color}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24
+      }
+    }, typInfo.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: typInfo.color,
+        fontWeight: 700,
+        marginBottom: 2
+      }
+    }, typInfo.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 15
+      }
+    }, t.titel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 4
+      }
+    }, "📅 ", fmtD(t.datum), " • 🕐 ", t.uhrzeit, " Uhr"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 2
+      }
+    }, "📍 ", t.ort)), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 5
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditT(t),
+      style: {
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.3)",
+        color: "#2288FF",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => loeschenTermin(t.id),
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        color: "#f87171",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "🗑️"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        marginTop: 12
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => reagieren(t, "zusage"),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "zusage" ? "#4ade80" : "#003070"}`,
+        background: status === "zusage" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "zusage" ? "#4ade80" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 12
+      }
+    }, "✅ Ja"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => reagieren(t, "absage"),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "absage" ? "#f87171" : "#003070"}`,
+        background: status === "absage" ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "absage" ? "#f87171" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 12
+      }
+    }, "❌ Nein"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => status === "vielleicht" ? reagieren(t, "vielleicht", null, "—") : oeffneVielleicht(t, null),
+      style: {
+        flex: 1,
+        padding: "9px",
+        borderRadius: 10,
+        cursor: "pointer",
+        border: `2px solid ${status === "vielleicht" ? "#fbbf24" : "#003070"}`,
+        background: status === "vielleicht" ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.03)",
+        color: status === "vielleicht" ? "#fbbf24" : "#94a3b8",
+        fontWeight: 700,
+        fontSize: 12
+      }
+    }, "❓ ", status === "vielleicht" ? "Vielleicht" : "Vielleicht")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12,
+        marginTop: 10,
+        fontSize: 11,
+        color: "#64748b",
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "✅ ", anzZusagen, " Zusagen"), /*#__PURE__*/React.createElement("span", null, "❌ ", anzAbsagen, " Absagen"), /*#__PURE__*/React.createElement("span", null, "❓ ", (t.vielleicht || []).length, " Vielleicht"), /*#__PURE__*/React.createElement("span", null, "⏳ ", nichtAbgestimmt.length, " offen")), (anzZusagen > 0 || anzAbsagen > 0 || (t.vielleicht || []).length > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, anzZusagen > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#4ade80"
+      }
+    }, "✅"), " ", (t.zusagen || []).join(", ")), anzAbsagen > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 3
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#f87171"
+      }
+    }, "❌"), " ", (t.absagen || []).join(", ")), (t.vielleicht || []).length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#fbbf24"
+      }
+    }, "❓"), " ", kannBearbeiten ? (t.vielleicht || []).map((v, i) => /*#__PURE__*/React.createElement("span", {
+      key: i
+    }, v.name || v, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#94a3b8"
+      }
+    }, " (", v.grund || "—", ")"), i < (t.vielleicht || []).length - 1 ? ", " : "")) : (t.vielleicht || []).map(v => v.name || v).join(", "))), nichtAbgestimmt.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6,
+        fontSize: 11,
+        color: "#fb923c"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), kannBearbeiten && /*#__PURE__*/React.createElement("button", {
+      onClick: async () => {
+        const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+        const datum = new Date(t.datum + "T12:00:00");
+        const wt = wochentage[datum.getDay()];
+        const anzZu = (t.zusagen || []).length;
+        const anzAb = (t.absagen || []).length;
+        const anzOf = (t.vielleicht || []).length;
+        let text = `${typInfo.emoji} *${typInfo.label}: ${t.titel}*\n`;
+        text += `📅 ${wt}, ${fmtD(t.datum)} um ${t.uhrzeit} Uhr\n`;
+        text += `📍 ${t.ort}\n\n`;
+        text += `Bitte in der App zu-/absagen:\n`;
+        text += `👉 https://3hsg-emden-kasse.de\n\n`;
+        if (anzZu > 0 || anzAb > 0 || anzOf > 0) {
+          text += `Stand: ✅ ${anzZu} · ❌ ${anzAb} · ❓ ${anzOf}`;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          toast("✅ WhatsApp-Text kopiert! Jetzt in die Gruppe einfügen.");
+        } catch {
+          toast("⚠️ Kopieren fehlgeschlagen — bitte manuell kopieren.");
+        }
+      },
+      style: {
+        width: "100%",
+        marginTop: 10,
+        padding: "10px",
+        background: "rgba(37,211,102,0.1)",
+        border: "1px solid rgba(37,211,102,0.4)",
+        borderRadius: 10,
+        color: "#25d166",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 16
+      }
+    }, "📲"), " WhatsApp-Text kopieren"), t.typ === "punktspiel" && kannBearbeiten && /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const zusagen = (t.zusagen || []);
+        const vielleicht = (t.vielleicht || []).map(v => v.name || v);
+        const alleSpieler = [...new Set([...zusagen, ...vielleicht])];
+        const spielerMitId = alleSpieler.map(name => {
+          const bu = benutzer.find(b => b.vorname + " " + b.nachname === name);
+          return {
+            vorname: bu?.vorname || name.split(" ")[0],
+            nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
+            handballId: bu?.handballId || "—",
+            trikotnummer: bu?.trikotnummer || "—",
+            status: zusagen.includes(name) ? "✅" : "❓"
+          };
+        });
+        const datum = new Date(t.datum + "T12:00:00");
+        const datumStr = datum.toLocaleDateString("de-DE", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
+        const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Spielberechtigungsnachweis</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 30px; color: #111; }
+  .header { text-align: center; border-bottom: 3px solid #003F8A; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { color: #003F8A; font-size: 22px; margin: 0 0 6px 0; }
+  .header h2 { color: #333; font-size: 16px; margin: 0 0 4px 0; font-weight: normal; }
+  .meta { display: flex; gap: 30px; justify-content: center; margin-top: 10px; font-size: 13px; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th { background: #003F8A; color: white; padding: 10px 14px; text-align: left; font-size: 13px; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+  tr:nth-child(even) td { background: #f4f7fb; }
+  .status-ok { color: #16a34a; font-weight: bold; }
+  .status-vl { color: #d97706; font-weight: bold; }
+  .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
+  .badge { display: inline-block; background: #e8f0fe; color: #003F8A; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🤾 3. Herren HSG Emden</h1>
+  <h2>Spielberechtigungsnachweis</h2>
+  <div class="meta">
+    <span>🏆 ${t.titel}</span>
+    <span>📅 ${datumStr}</span>
+    <span>🕐 ${t.uhrzeit} Uhr</span>
+    <span>📍 ${t.ort}</span>
+  </div>
+</div>
+<div style="margin-bottom:10px; font-size:13px;">
+  <span class="badge">✅ ${zusagen.length} Zusagen</span>
+  &nbsp;
+  <span class="badge" style="background:#fef3c7;color:#92400e;">❓ ${vielleicht.length} Vielleicht</span>
+  &nbsp;
+  <strong>${alleSpieler.length} Spieler gesamt</strong>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Trikot</th>
+      <th>Vorname</th>
+      <th>Nachname</th>
+      <th>Handball-ID</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${[...spielerMitId].sort((a,b)=>{const na=parseInt(a.trikotnummer)||999;const nb=parseInt(b.trikotnummer)||999;return na-nb;}).map((sp) => `
+    <tr>
+      <td><strong>${sp.trikotnummer}</strong></td>
+      <td>${sp.vorname}</td>
+      <td>${sp.nachname}</td>
+      <td><strong>${sp.handballId}</strong></td>
+      <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
+    </tr>`).join("")}
+  </tbody>
+</table>
+<div class="footer">
+  Erstellt am ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})} Uhr · HSG Emden Kasse App
+</div>
+</body>
+</html>`;
+        const win = window.open("", "_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => win.print(), 500);
+      },
+      style: {
+        width: "100%",
+        marginTop: 8,
+        padding: "10px",
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.4)",
+        borderRadius: 10,
+        color: "#60a5fa",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {style:{fontSize:16}}, "📄"), " Spielerliste als PDF"), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTop: "1px solid rgba(255,255,255,0.08)"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setOffenAdminVote(offenAdminVote === t.id ? null : t.id),
+      style: {
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        fontWeight: 700
+      }
+    }, "👤 Für Spieler abstimmen"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        transform: offenAdminVote === t.id ? "rotate(0deg)" : "rotate(-90deg)",
+        transition: "transform 0.2s"
+      }
+    }, "▼")), offenAdminVote === t.id && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6
+      }
+    }, eigeneSpieler.map(sp => {
+      const spStatus = statusVon(t, sp.name);
+      return /*#__PURE__*/React.createElement("div", {
+        key: sp.id,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          borderRadius: 8,
+          background: "rgba(255,255,255,0.03)"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          background: pCol(sp.id),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10,
+          fontWeight: 800,
+          color: "#001A3A",
+          flexShrink: 0
+        }
+      }, ava(sp.name)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          fontSize: 12,
+          fontWeight: 600
+        }
+      }, sp.name.split(" ")[0]), /*#__PURE__*/React.createElement("button", {
+        onClick: () => reagieren(t, "zusage", sp.name),
+        style: {
+          padding: "4px 7px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "zusage" ? "#4ade80" : "#003070"}`,
+          background: spStatus === "zusage" ? "rgba(74,222,128,0.2)" : "transparent",
+          color: spStatus === "zusage" ? "#4ade80" : "#64748b",
+          fontSize: 13
+        }
+      }, "✅"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => reagieren(t, "absage", sp.name),
+        style: {
+          padding: "4px 7px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "absage" ? "#f87171" : "#003070"}`,
+          background: spStatus === "absage" ? "rgba(248,113,113,0.2)" : "transparent",
+          color: spStatus === "absage" ? "#f87171" : "#64748b",
+          fontSize: 13
+        }
+      }, "❌"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => oeffneVielleicht(t, sp.name),
+        style: {
+          padding: "4px 7px",
+          borderRadius: 6,
+          cursor: "pointer",
+          border: `1px solid ${spStatus === "vielleicht" ? "#fbbf24" : "#003070"}`,
+          background: spStatus === "vielleicht" ? "rgba(251,191,36,0.2)" : "transparent",
+          color: spStatus === "vielleicht" ? "#fbbf24" : "#64748b",
+          fontSize: 13
+        }
+      }, "❓"));
+    })))));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "📅 Termine — ", meineMannschaft), vielleichtModal && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setVielleichtModal(null),
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      background: "#001A3A",
+      border: "2px solid #fbbf24",
+      borderRadius: 16,
+      padding: 24,
+      width: "100%",
+      maxWidth: 340
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      marginBottom: 4
+    }
+  }, "❓ Vielleicht"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginBottom: 14
+    }
+  }, "Bitte gib einen kurzen Grund an — dieser ist nur für Admin und Eventorganisation sichtbar."), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginBottom: 4
+    }
+  }, "GRUND"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Muss eventuell arbeiten...",
+    value: vielleichtGrund,
+    onChange: e => setVielleichtGrund(e.target.value),
+    onKeyDown: e => e.key === "Enter" && sendeVielleicht(),
+    autoFocus: true,
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 14
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: sendeVielleicht,
+    style: {
+      flex: 1,
+      padding: "12px",
+      background: "linear-gradient(135deg,#d97706,#fbbf24)",
+      border: "none",
+      borderRadius: 12,
+      color: "#1a1a1a",
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "❓ Vielleicht bestätigen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVielleichtModal(null),
+    style: {
+      padding: "12px 14px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 20
+    }
+  }, !zeigeForm ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(true),
+    style: {
+      width: "100%",
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "➕ Neuen Termin anlegen") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(34,136,255,0.06)",
+      border: "1px solid #2288FF33",
+      borderRadius: 14,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neuer Termin"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 10,
+      flexWrap: "wrap"
+    }
+  }, Object.entries(TERMIN_TYPEN).map(([key, info]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => setForm(f => ({
+      ...f,
+      typ: key
+    })),
+    style: {
+      padding: "8px 12px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${form.typ === key ? info.color : "#003070"}`,
+      background: form.typ === key ? `${info.color}22` : "rgba(255,255,255,0.03)",
+      color: form.typ === key ? info.color : "#94a3b8",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "TITEL"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Training, Heimspiel gegen...",
+    value: form.titel,
+    onChange: e => setForm(f => ({
+      ...f,
+      titel: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 10
+    }
+  }, "ORT"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Sporthalle Süd",
+    value: form.ort,
+    onChange: e => setForm(f => ({
+      ...f,
+      ort: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "DATUM"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: form.datum,
+    onChange: e => setForm(f => ({
+      ...f,
+      datum: e.target.value
+    })),
+    style: IS
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "UHRZEIT"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: form.uhrzeit,
+    onChange: e => setForm(f => ({
+      ...f,
+      uhrzeit: e.target.value
+    })),
+    style: IS
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      padding: "10px 12px",
+      background: "rgba(255,255,255,0.03)",
+      borderRadius: 10,
+      border: "1px solid #003070"
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: form.wiederholen,
+    onChange: e => setForm(f => ({
+      ...f,
+      wiederholen: e.target.checked
+    })),
+    style: {
+      width: 16,
+      height: 16,
+      cursor: "pointer"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#e2e8f0"
+    }
+  }, "🔁 Wöchentlich wiederholen")), form.wiederholen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, "Für"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "2",
+    max: "52",
+    value: form.wiederholenAnzahl,
+    onChange: e => setForm(f => ({
+      ...f,
+      wiederholenAnzahl: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 70,
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, "Wochen (gleicher Wochentag & Uhrzeit)"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: addTermin,
+    style: {
+      flex: 1,
+      padding: "12px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Termin anlegen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(false),
+    style: {
+      padding: "12px 16px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 10
+    }
+  }, "🔜 Kommende Termine"), kommendeTermine.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "📭 Keine kommenden Termine") : kommendeTermine.map(t => terminCard(t)), vergangeneTermine.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeVergangene(v => !v),
+    style: {
+      width: "100%",
+      padding: "10px",
+      marginTop: 10,
+      marginBottom: 10,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #003070",
+      borderRadius: 10,
+      color: "#94a3b8",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, zeigeVergangene ? "▲ Vergangene Termine ausblenden" : `▼ Vergangene Termine anzeigen (${vergangeneTermine.length})`), zeigeVergangene && vergangeneTermine.map(t => terminCard(t))));
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────
+// ── SONSTIGES TAB ────────────────────────────────────────────
+function SonstigesTab({
+  sonstiges,
+  toast
+}) {
+  const [editSon, setEditSon] = useState(null);
+  const [gSForm, setGSForm] = useState({
+    name: "",
+    preis: "",
+    emoji: "🌭"
+  });
+  const EMOJIS_SON = ["🌭", "🍕", "🍔", "🥪", "🍿", "🚬", "🍫", "🎲", "👕", "🧢", "🎱", "⚽", "🧃", "🥤", "🍺", "☕"];
+  const addSon = async () => {
+    const p = parseFloat(gSForm.preis.replace(",", "."));
+    if (!gSForm.name.trim() || !p || p <= 0) return toast("Name und Preis erforderlich!");
+    await col("sonstiges").add({
+      name: gSForm.name.trim(),
+      preis: p,
+      emoji: gSForm.emoji
+    });
+    setGSForm({
+      name: "",
+      preis: "",
+      emoji: "🌭"
+    });
+    toast("✅ Hinzugefügt!");
+  };
+  const delSon = async id => {
+    await ref("sonstiges", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditSon = async () => {
+    const p = parseFloat(String(editSon.preis).replace(",", "."));
+    if (!editSon.name.trim() || !p) return;
+    await ref("sonstiges", editSon.id).set({
+      name: editSon.name.trim(),
+      preis: p,
+      emoji: editSon.emoji
+    });
+    setEditSon(null);
+    toast("✅ Gespeichert");
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 14
+    }
+  }, "🛒 Sonstiges verwalten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap",
+      marginBottom: 10
+    }
+  }, EMOJIS_SON.map(em => /*#__PURE__*/React.createElement("button", {
+    key: em,
+    onClick: () => setGSForm(f => ({
+      ...f,
+      emoji: em
+    })),
+    style: {
+      fontSize: 20,
+      background: gSForm.emoji === em ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${gSForm.emoji === em ? "#a78bfa" : "#003070"}`,
+      borderRadius: 8,
+      padding: "4px 7px",
+      cursor: "pointer"
+    }
+  }, em))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Name (z.B. Bratwurst)",
+    value: gSForm.name,
+    onChange: e => setGSForm(f => ({
+      ...f,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "€",
+    value: gSForm.preis,
+    onChange: e => setGSForm(f => ({
+      ...f,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addSon,
+    style: {
+      padding: "0 16px",
+      background: "linear-gradient(135deg,#6d28d9,#a78bfa)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontWeight: 800,
+      fontSize: 20,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "+")), sonstiges.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "Noch keine sonstigen Artikel"), sonstiges.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g.id
+  }, editSon?.id === g.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, editSon.emoji), /*#__PURE__*/React.createElement("input", {
+    value: editSon.name,
+    onChange: e => setEditSon(x => ({
+      ...x,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editSon.preis,
+    onChange: e => setEditSon(x => ({
+      ...x,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditSon,
+    style: {
+      padding: "0 12px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700,
+      height: 48
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSon(null),
+    style: {
+      padding: "0 10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer",
+      height: 48
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #a78bfa22"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, g.emoji), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      fontWeight: 700
+    }
+  }, g.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#a78bfa",
+      fontWeight: 800
+    }
+  }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSon(g),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delSon(g.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "🗑️")))));
+}
+
+// ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
+function SchwarzeBrettVerwaltung({
+  schwarzesBrett,
+  cu,
+  toast
+}) {
+  const [neuerTitel, setNeuerTitel] = useState("");
+  const [neuerText, setNeuerText] = useState("");
+  const posten = async () => {
+    if (!neuerTitel.trim()) return toast("⚠️ Bitte einen Titel eingeben!");
+    await col("schwarzesbrett").add({
+      titel: neuerTitel.trim(),
+      text: neuerText.trim(),
+      mannschaft: cu.mannschaft || "1. Herren",
+      vonName: cu.vorname + " " + cu.nachname,
+      datum: new Date().toLocaleDateString("de-DE"),
+      ts: Date.now()
+    });
+    setNeuerTitel("");
+    setNeuerText("");
+    toast("✅ Nachricht gepostet!");
+  };
+  const loeschen = async id => {
+    await ref("schwarzesbrett", id).delete();
+    toast("🗑️ Nachricht gelöscht");
+  };
+  const eigene = schwarzesBrett.filter(m => (m.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren"));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(251,191,36,0.06)",
+      border: "1px solid #fbbf2433",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#fbbf24",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "📌 Schwarzes Brett"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "TITEL"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Training fällt aus!",
+    value: neuerTitel,
+    onChange: e => setNeuerTitel(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 8
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "DETAILS (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Halle belegt, nächstes Training Freitag",
+    value: neuerText,
+    onChange: e => setNeuerText(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: posten,
+    style: {
+      width: "100%",
+      padding: "10px",
+      background: "linear-gradient(135deg,#b45309,#fbbf24)",
+      border: "none",
+      borderRadius: 10,
+      color: "#1a1a1a",
+      fontWeight: 800,
+      fontSize: 13,
+      cursor: "pointer",
+      marginBottom: 14
+    }
+  }, "📌 Nachricht posten"), eigene.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 8
+    }
+  }, "AKTUELLE NACHRICHTEN"), eigene.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.id,
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      padding: "8px 10px",
+      borderRadius: 8,
+      marginBottom: 6,
+      background: "rgba(251,191,36,0.08)",
+      border: "1px solid #fbbf2430"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 12,
+      color: "#fde68a"
+    }
+  }, m.titel), m.text && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginTop: 2
+    }
+  }, m.text), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#64748b",
+      marginTop: 3
+    }
+  }, m.datum, " · ", m.vonName)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => loeschen(m.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 6,
+      padding: "3px 7px",
+      fontSize: 11,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "🗑️"))), eigene.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#475569",
+      textAlign: "center",
+      padding: "10px 0"
+    }
+  }, "Noch keine Nachrichten"));
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────
+
+
+function MainApp({
+  cu,
+  onLogout
+}) {
+  const [eintraege, setEintraege] = useState([]);
+  const [spieler, setSpieler] = useState([]);
+  const [getraenke, setGetraenke] = useState([]);
+  const [sonstiges, setSonstiges] = useState([]);
+  const [benutzer, setBenutzer] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("konto");
+  const [toastMsg, setToastMsg] = useState(null);
+  const [gwS, setGwS] = useState(null);
+  const [datum, setDatum] = useState(todayStr());
+  const [zahlart, setZahlart] = useState("direkt");
+  const [mForm, setMForm] = useState({
+    typ: "einnahme",
+    betrag: "",
+    beschreibung: "",
+    person: "",
+    datum: todayStr()
+  });
+  const [nName, setNName] = useState("");
+  const [guthabenOffen, setGuthabenOffen] = useState(true);
+  const [topTrinkerOffen, setTopTrinkerOffen] = useState(true);
+  const [monatsOffen, setMonatsOffen] = useState(false);
+  const [spielerListeOffen, setSpielerListeOffen] = useState(true);
+  const [editSp, setEditSp] = useState(null);
+  const [gForm, setGForm] = useState({
+    name: "",
+    preis: "",
+    emoji: "🥤"
+  });
+  const [editG, setEditG] = useState(null);
+  const [vF, setVF] = useState("alle");
+  const [vS, setVS] = useState("alle");
+  const [vSuche, setVSuche] = useState("");
+  const [strafenEintraege, setStrafenEintraege] = useState([]);
+  const [termine, setTermine] = useState([]);
+  const [schwarzesBrett, setSchwarzBrett] = useState([]);
+  const isAdmin = cu.rolle === "admin";
+  const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
+  const isEventorga = cu.rolle === "eventorga" || isAdmin;
+  const [pwForm, setPwForm] = useState({
+    alt: "",
+    neu: "",
+    neu2: ""
+  });
+  const meinBenutzerObj = benutzer.find(b => b.id === cu.id);
+  const [handballId, setHandballId] = useState("");
+  const [handballIdGespeichert, setHandballIdGespeichert] = useState(false);
+  useEffect(() => {
+    if(meinBenutzerObj?.handballId) setHandballId(meinBenutzerObj.handballId);
+  }, [meinBenutzerObj?.handballId]);
+  const speichereHandballId = async() => {
+    if(!handballId.trim()) return toast("⚠️ Bitte eine Handball-ID eingeben!");
+    await ref("benutzer", cu.id).update({handballId: handballId.trim()});
+    setHandballIdGespeichert(true);
+    setTimeout(() => setHandballIdGespeichert(false), 2000);
+    toast("✅ Handball-ID gespeichert!");
+  };
+  const aendereMeinPasswort = async () => {
+    const meinBenutzer = benutzer.find(b => b.id === cu.id);
+    if (!meinBenutzer) return toast("⚠️ Benutzer nicht gefunden!");
+    if (meinBenutzer.passwort !== pwForm.alt) return toast("❌ Aktuelles Passwort ist falsch!");
+    if (!pwForm.neu.trim() || pwForm.neu.length < 4) return toast("⚠️ Neues Passwort mind. 4 Zeichen!");
+    if (pwForm.neu !== pwForm.neu2) return toast("⚠️ Neue Passwörter stimmen nicht überein!");
+    await ref("benutzer", cu.id).update({
+      passwort: pwForm.neu.trim()
+    });
+    setPwForm({
+      alt: "",
+      neu: "",
+      neu2: ""
+    });
+    toast("✅ Passwort erfolgreich geändert!");
+  };
+  const toast = msg => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2800);
+  };
+  useEffect(() => {
+    let n = 0;
+    const done = () => {
+      n++;
+      if (n >= 8) setLoading(false);
+    };
+    const u1 = col("eintraege").onSnapshot(s => {
+      setEintraege(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
+    const u2 = col("spieler").onSnapshot(s => {
+      setSpieler(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
+    const u3 = col("getraenke").onSnapshot(s => {
+      const l = s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (l.length === 0) GETRAENKE_DEFAULT.forEach(g => col("getraenke").add(g));
+      setGetraenke(l);
+      done();
+    });
+    const u4 = col("benutzer").onSnapshot(s => {
+      setBenutzer(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
+    const u5 = col("strafen").onSnapshot(s => {
+      setStrafenEintraege(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
+    const u6 = col("termine").onSnapshot(s => {
+      setTermine(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      done();
+    });
+    const u7 = col("sonstiges").onSnapshot(s => {
+      const l = s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (l.length === 0) SONSTIGES_DEFAULT.forEach(g => col("sonstiges").add(g));
+      setSonstiges(l);
+      done();
+    });
+    const u8 = col("schwarzesbrett").onSnapshot(s => {
+      setSchwarzBrett(s.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
+      done();
+    });
+    return () => {
+      u1();
+      u2();
+      u3();
+      u4();
+      u5();
+      u6();
+      u7();
+      u8();
+    };
+  }, []);
+  const gwSObj = spieler.find(s => s.id === gwS);
+  const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
+  const gut = gwBu?.guthaben || 0;
+  const [buchKat, setBuchKat] = useState("getraenk"); // "getraenk" | "sonstiges"
+  const [buchMannschaftTab, setBuchMannschaftTab] = useState("meine"); // "meine" | "sonstige"
+  const [buchMannschaftWahl, setBuchMannschaftWahl] = useState(cu.mannschaft || "1. Herren");
+  const buchArtikel = async (g, typ) => {
+    if (!gwS) return toast("⚠️ Bitte erst Spieler auswählen!");
+    const sp = spieler.find(s => s.id === gwS);
+    if (zahlart === "guthaben") {
+      if (!gwBu) return toast("⚠️ Kein Benutzer für diesen Spieler gefunden!");
+      if (gut < g.preis) return toast(`⚠️ Guthaben reicht nicht! (${gut.toFixed(2)} €)`);
+      await ref("benutzer", gwBu.id).update({
+        guthaben: gut - g.preis
+      });
+    }
+    await col("eintraege").add({
+      typ,
+      betrag: g.preis,
+      beschreibung: g.name,
+      getraenkEmoji: g.emoji,
+      person: sp.name,
+      spielerId: sp.id,
+      datum: fmtD(datum),
+      datumRaw: datum,
+      zeit: new Date().toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      gebuchtvon: cu.benutzername,
+      zahlart,
+      ts: Date.now()
+    });
+    toast(`✅ ${g.emoji} ${g.name} für ${sp.name}! (${zahlart === "guthaben" ? "💰 Guthaben" : "💵 Direkt"})`);
+  };
+  const buchG = async g => buchArtikel(g, "getraenk");
+  const buchS = async g => buchArtikel(g, "sonstiges");
+  const addManual = async () => {
+    const b = parseFloat(mForm.betrag.replace(",", "."));
+    if (!b || b <= 0) return toast("Bitte gültigen Betrag!");
+    if (!mForm.beschreibung.trim()) return toast("Bitte Beschreibung eingeben!");
+    await col("eintraege").add({
+      typ: mForm.typ,
+      betrag: b,
+      beschreibung: mForm.beschreibung.trim(),
+      person: mForm.person.trim(),
+      datum: fmtD(mForm.datum),
+      datumRaw: mForm.datum,
+      zeit: new Date().toLocaleTimeString("de-DE", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      gebuchtvon: cu.benutzername,
+      ts: Date.now()
+    });
+    setMForm(f => ({
+      ...f,
+      betrag: "",
+      beschreibung: "",
+      person: "",
+      datum: todayStr()
+    }));
+    toast("✅ Gespeichert!");
+    setTab("verlauf");
+  };
+  const addSp = async () => {
+    if (!nName.trim()) return toast("Bitte Namen eingeben!");
+    if (spieler.find(s => s.name.toLowerCase() === nName.trim().toLowerCase())) return toast("Spieler existiert bereits!");
+    await col("spieler").add({
+      name: nName.trim()
+    });
+    setNName("");
+    toast("✅ Hinzugefügt!");
+  };
+  const delSp = async id => {
+    await ref("spieler", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditSp = async () => {
+    if (!editSp.name.trim()) return;
+    await ref("spieler", editSp.id).set({
+      name: editSp.name.trim()
+    });
+    setEditSp(null);
+    toast("✅ Gespeichert");
+  };
+  const addGt = async () => {
+    const p = parseFloat(gForm.preis.replace(",", "."));
+    if (!gForm.name.trim() || !p || p <= 0) return toast("Name und Preis erforderlich!");
+    await col("getraenke").add({
+      name: gForm.name.trim(),
+      preis: p,
+      emoji: gForm.emoji
+    });
+    setGForm({
+      name: "",
+      preis: "",
+      emoji: "🥤"
+    });
+    toast("✅ Hinzugefügt!");
+  };
+  const delGt = async id => {
+    await ref("getraenke", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const saveEditGt = async () => {
+    const p = parseFloat(String(editG.preis).replace(",", "."));
+    if (!editG.name.trim() || !p) return;
+    await ref("getraenke", editG.id).set({
+      name: editG.name.trim(),
+      preis: p,
+      emoji: editG.emoji
+    });
+    setEditG(null);
+    toast("✅ Gespeichert");
+  };
+  const delE = async id => {
+    await ref("eintraege", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+  const ein = eintraege.filter(e => e.typ === "einnahme").reduce((s, e) => s + e.betrag, 0);
+  const aus = eintraege.filter(e => e.typ === "ausgabe").reduce((s, e) => s + e.betrag, 0);
+  const spe = eintraege.filter(e => e.typ === "spende").reduce((s, e) => s + e.betrag, 0);
+  const gSum = eintraege.filter(e => e.typ === "getraenk").reduce((s, e) => s + e.betrag, 0);
+  const sSum = eintraege.filter(e => e.typ === "sonstiges").reduce((s, e) => s + e.betrag, 0);
+  const kasse = ein + spe + gSum + sSum - aus;
+  const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS).filter(e => {
+    if (!vSuche.trim()) return true;
+    const q = vSuche.trim().toLowerCase();
+    return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
+  });
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  if (loading) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "#00112E",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      borderRadius: 16,
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 36
+    }
+  }, "🤾"));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "linear-gradient(160deg,#00112E 0%,#001A3A 50%,#00112E 100%)",
+      color: "#e2e8f0",
+      maxWidth: 480,
+      margin: "0 auto",
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#003F8A 0%,#001F50 100%)",
+      padding: "14px 20px",
+      borderBottom: "2px solid #0055AA",
+      position: "sticky",
+      top: 0,
+      zIndex: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 18,
+      flexShrink: 0
+    }
+  }, "🤾"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      color: "#ffffff"
+    }
+  }, "3. Herren HSG Emden"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#93c5fd"
+    }
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
+      border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
+      borderRadius: 10,
+      padding: "5px 10px",
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#94a3b8"
+    }
+  }, "Kassenstand"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      color: kasse >= 0 ? "#4ade80" : "#f87171"
+    }
+  }, kasse.toFixed(2), " €")), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogout,
+    style: {
+      marginLeft: 6,
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#64748b",
+      borderRadius: 9,
+      padding: "7px 9px",
+      fontSize: 14,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "🔒"))), (() => {
+    const heute = new Date();
+    const heuteMMDD = `${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
+    const geburtstagskinder = benutzer.filter(b => b.geburtstag && b.geburtstag.slice(5) === heuteMMDD);
+    if (geburtstagskinder.length === 0) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg,#be185d,#ec4899)",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        justifyContent: "center"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, "🎂"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "white",
+        fontSize: 13,
+        fontWeight: 700
+      }
+    }, "Heute ", geburtstagskinder.length === 1 ? "hat" : "haben", " ", geburtstagskinder.map(b => b.vorname).join(" & "), " Geburtstag!"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20
+      }
+    }, "🎉"));
+  })(), /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingBottom: 95
+    }
+  }, tab === "konto" && (() => {
+    const meineBuchungen = [...eintraege].filter(e => e.spielerId === spieler.find(s => s.name === cu.vorname + " " + cu.nachname)?.id).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const meineG = meineBuchungen.filter(e => e.typ === "getraenk");
+    const gGesamt = meineG.reduce((s, e) => s + e.betrag, 0);
+    const meinBu = benutzer.find(b => b.id === cu.id);
+    const meinGut = meinBu?.guthaben || 0;
+    const gCount = {};
+    meineG.forEach(e => {
+      gCount[e.beschreibung] = (gCount[e.beschreibung] || 0) + 1;
+    });
+    const lieblings = Object.entries(gCount).sort((a, b) => b[1] - a[1])[0];
+    const perGut = meineG.filter(e => e.zahlart === "guthaben").length;
+    const perDir = meineG.filter(e => e.zahlart === "direkt").length;
+    // Zusage-Quote: nur vergangene Trainings der eigenen Mannschaft, bei denen reagiert wurde
+    const meinSpielerObj = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
+    const heuteStr = todayStr();
+    const meineTrainings = termine.filter(t => t.typ === "training" && (t.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren") && t.datum < heuteStr);
+    const trainingsMitReaktion = meinSpielerObj ? meineTrainings.filter(t => (t.zusagen || []).includes(meinSpielerObj.name) || (t.absagen || []).includes(meinSpielerObj.name)) : [];
+    const trainingsZugesagt = meinSpielerObj ? meineTrainings.filter(t => (t.zusagen || []).includes(meinSpielerObj.name)) : [];
+    const zusageQuote = trainingsMitReaktion.length > 0 ? Math.round(trainingsZugesagt.length / trainingsMitReaktion.length * 100) : null;
+    // Nächster Termin der eigenen Mannschaft
+    const naechsterTermin = termine.filter(t => (t.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren") && t.datum >= heuteStr).sort((a, b) => a.datum.localeCompare(b.datum) || (a.uhrzeit || "").localeCompare(b.uhrzeit || ""))[0] || null;
+    const meinStatusNT = naechsterTermin && meinSpielerObj ? (naechsterTermin.zusagen || []).includes(meinSpielerObj.name) ? "zusage" : (naechsterTermin.absagen || []).includes(meinSpielerObj.name) ? "absage" : (naechsterTermin.vielleicht || []).some(v => (v.name || v) === meinSpielerObj.name) ? "vielleicht" : null : null;
+    const typInfoNT = naechsterTermin ? TERMIN_TYPEN[naechsterTermin.typ] || TERMIN_TYPEN.sonstiges : null;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: 20
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        marginBottom: 16
+      }
+    }, "👤 Mein Konto"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg,#003F8A,#001F50)",
+        border: "2px solid #0055AA",
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        gap: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        background: "linear-gradient(135deg,#0066CC,#2288FF)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 20,
+        fontWeight: 800,
+        color: "white",
+        flexShrink: 0
+      }
+    }, ava(cu.vorname + " " + cu.nachname)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 800
+      }
+    }, cu.vorname, " ", cu.nachname), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#93c5fd",
+        marginTop: 2
+      }
+    }, "👤 ", cu.benutzername), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#64748b",
+        marginTop: 2
+      }
+    }, "🤾 ", cu.mannschaft || "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#94a3b8"
+      }
+    }, "Guthaben"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        color: meinGut > 0 ? "#4ade80" : "#f87171"
+      }
+    }, meinGut.toFixed(2), " €"))), schwarzesBrett.filter(m => (m.mannschaft || "1. Herren") === (cu.mannschaft || "1. Herren")).slice(0, 3).map(m => /*#__PURE__*/React.createElement("div", {
+      key: m.id,
+      style: {
+        background: "rgba(251,191,36,0.08)",
+        border: "1px solid #fbbf2440",
+        borderLeft: "3px solid #fbbf24",
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginBottom: 10,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 20,
+        flexShrink: 0
+      }
+    }, "📌"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 13,
+        color: "#fde68a"
+      }
+    }, m.titel), m.text && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 3
+      }
+    }, m.text), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        marginTop: 4
+      }
+    }, m.datum || "", " · ", m.vonName || "")))), naechsterTermin ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: `${typInfoNT.color}12`,
+        border: `1px solid ${typInfoNT.color}40`,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 28,
+        flexShrink: 0
+      }
+    }, typInfoNT.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: typInfoNT.color,
+        fontWeight: 700,
+        marginBottom: 2
+      }
+    }, "📅 NÄCHSTER TERMIN"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 14,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, naechsterTermin.titel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginTop: 3
+      }
+    }, fmtD(naechsterTermin.datum), " · ", naechsterTermin.uhrzeit, " Uhr · 📍 ", naechsterTermin.ort)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flexShrink: 0,
+        fontSize: 18
+      }
+    }, meinStatusNT === "zusage" ? "✅" : meinStatusNT === "absage" ? "❌" : meinStatusNT === "vielleicht" ? "❓" : "⏳")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid #003070",
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 16,
+        textAlign: "center",
+        fontSize: 12,
+        color: "#475569"
+      }
+    }, "📅 Keine kommenden Termine eingetragen"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(34,136,255,0.08)",
+        border: "1px solid #2288FF30",
+        borderRadius: 12,
+        padding: 14,
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        marginBottom: 4
+      }
+    }, "🥤"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: "#2288FF"
+      }
+    }, meineG.length), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, "Getränke total")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(74,222,128,0.08)",
+        border: "1px solid #4ade8030",
+        borderRadius: 12,
+        padding: 14,
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        marginBottom: 4
+      }
+    }, "💶"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: "#4ade80"
+      }
+    }, gGesamt.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, "Ausgegeben")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(96,165,250,0.08)",
+        border: "1px solid #60a5fa30",
+        borderRadius: 12,
+        padding: 14,
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        marginBottom: 4
+      }
+    }, "💵"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: "#60a5fa"
+      }
+    }, perDir), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, "Direkt gezahlt")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(163,230,53,0.08)",
+        border: "1px solid #a3e63530",
+        borderRadius: 12,
+        padding: 14,
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        marginBottom: 4
+      }
+    }, "💰"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 800,
+        color: "#a3e635"
+      }
+    }, perGut), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, "Per Guthaben"))), lieblings && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(244,140,6,0.08)",
+        border: "1px solid #f48c0630",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 32
+      }
+    }, meineG.find(e => e.beschreibung === lieblings[0])?.getraenkEmoji || "🥤"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8"
+      }
+    }, "Lieblingsgetränk"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 800,
+        color: "#f48c06"
+      }
+    }, lieblings[0]), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#64748b"
+      }
+    }, lieblings[1], "× bestellt"))), zusageQuote !== null && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(74,222,128,0.08)",
+        border: "1px solid #4ade8030",
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        display: "flex",
+        alignItems: "center",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 32
+      }
+    }, "🏃"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8"
+      }
+    }, "Trainings-Zusage-Quote"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 800,
+        color: zusageQuote >= 70 ? "#4ade80" : zusageQuote >= 40 ? "#fb923c" : "#f87171"
+      }
+    }, "Du warst bei ", zusageQuote, "% der Trainings dabei"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#64748b"
+      }
+    }, trainingsZugesagt.length, " von ", trainingsMitReaktion.length, " beantworteten Trainings"))), (() => {
+      const getraenkAnz = meineG.filter(e => e.typ === "getraenk").length;
+      const sonstigesAnz = meineG.filter(e => e.typ === "sonstiges").length;
+      const trainingsAnz = trainingsZugesagt.length;
+      const MEILENSTEINE = [{
+        schwelle: 10,
+        typ: "getraenk",
+        emoji: "🥤",
+        text: "10 Getränke getrunken!"
+      }, {
+        schwelle: 50,
+        typ: "getraenk",
+        emoji: "🍺",
+        text: "50 Getränke getrunken!"
+      }, {
+        schwelle: 100,
+        typ: "getraenk",
+        emoji: "🏅",
+        text: "100 Getränke — Legende!"
+      }, {
+        schwelle: 200,
+        typ: "getraenk",
+        emoji: "🏆",
+        text: "200 Getränke — Hall of Fame!"
+      }, {
+        schwelle: 5,
+        typ: "sonstiges",
+        emoji: "🌭",
+        text: "5x Sonstiges gekauft!"
+      }, {
+        schwelle: 25,
+        typ: "sonstiges",
+        emoji: "🛒",
+        text: "25x Sonstiges — Stammkunde!"
+      }, {
+        schwelle: 10,
+        typ: "training",
+        emoji: "⚡",
+        text: "10 Trainings zugesagt!"
+      }, {
+        schwelle: 25,
+        typ: "training",
+        emoji: "💪",
+        text: "25 Trainings — Super dabei!"
+      }, {
+        schwelle: 50,
+        typ: "training",
+        emoji: "🌟",
+        text: "50 Trainings — Unverzichtbar!"
+      }];
+      const erreicht = MEILENSTEINE.filter(m => {
+        if (m.typ === "getraenk") return getraenkAnz >= m.schwelle;
+        if (m.typ === "sonstiges") return sonstigesAnz >= m.schwelle;
+        if (m.typ === "training") return trainingsAnz >= m.schwelle;
+        return false;
+      });
+      if (erreicht.length === 0) return null;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          background: "rgba(251,191,36,0.06)",
+          border: "1px solid #fbbf2430",
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 16
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: "#fbbf24",
+          fontWeight: 700,
+          marginBottom: 10
+        }
+      }, "🏅 DEINE MEILENSTEINE"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6
+        }
+      }, erreicht.map((m, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          background: "rgba(251,191,36,0.12)",
+          border: "1px solid #fbbf2440",
+          borderRadius: 10,
+          padding: "6px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: 5
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 16
+        }
+      }, m.emoji), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#fde68a",
+          fontWeight: 600
+        }
+      }, m.text)))));
+    })(), meinGut <= 2 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+        fontSize: 13,
+        color: "#f87171",
+        fontWeight: 600,
+        textAlign: "center"
+      }
+    }, "⚠️ ", meinGut === 0 ? "Kein Guthaben mehr!" : "Guthaben fast aufgebraucht!", " Beim Admin aufladen lassen.", " ", /*#__PURE__*/React.createElement("a", {
+      href: "https://www.paypal.me/HandballEMD",
+      target: "_blank",
+      rel: "noopener noreferrer",
+      style: {
+        color: "#60a5fa",
+        fontWeight: 700,
+        textDecoration: "underline"
+      }
+    }, "💳 Per PayPal einzahlen")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid #003070",
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        marginBottom: 12
+      }
+    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("div", {
+      style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,marginTop:4}
+    }, "🏐 Handball-ID"), /*#__PURE__*/React.createElement("div", {
+      style: {display:"flex",gap:8,marginBottom:16}
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      placeholder: "z.B. 12345678",
+      value: handballId,
+      onChange: e => setHandballId(e.target.value),
+      style: {...IS, marginTop:0, flex:1}
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: speichereHandballId,
+      style: {padding:"0 14px",background:handballIdGespeichert?"#16a34a":"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:13,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}
+    }, handballIdGespeichert ? "✅ Gespeichert!" : "💾 Speichern")), /*#__PURE__*/React.createElement("div", {
+      style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:12}
+    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("input", {
+      type: "password",
+      placeholder: "Aktuelles Passwort",
+      value: pwForm.alt,
+      onChange: e => setPwForm(f => ({
+        ...f,
+        alt: e.target.value
+      })),
+      style: IS
+    }), /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        fontWeight: 700,
+        display: "block",
+        marginTop: 10
+      }
+    }, "NEUES PASSWORT"), /*#__PURE__*/React.createElement("input", {
+      type: "password",
+      placeholder: "Neues Passwort (mind. 4 Zeichen)",
+      value: pwForm.neu,
+      onChange: e => setPwForm(f => ({
+        ...f,
+        neu: e.target.value
+      })),
+      style: IS
+    }), /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        fontWeight: 700,
+        display: "block",
+        marginTop: 10
+      }
+    }, "NEUES PASSWORT BESTÄTIGEN"), /*#__PURE__*/React.createElement("input", {
+      type: "password",
+      placeholder: "Neues Passwort wiederholen",
+      value: pwForm.neu2,
+      onChange: e => setPwForm(f => ({
+        ...f,
+        neu2: e.target.value
+      })),
+      style: IS
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: aendereMeinPasswort,
+      style: {
+        width: "100%",
+        marginTop: 12,
+        padding: "12px",
+        background: "linear-gradient(135deg,#0066CC,#2288FF)",
+        border: "none",
+        borderRadius: 12,
+        color: "white",
+        fontSize: 14,
+        fontWeight: 800,
+        cursor: "pointer"
+      }
+    }, "✅ Passwort ändern")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        marginBottom: 10
+      }
+    }, "📋 Meine letzten Buchungen"), meineBuchungen.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "#475569",
+        padding: "30px 0"
+      }
+    }, "📭 Noch keine Buchungen") : meineBuchungen.slice(0, 10).map(e => /*#__PURE__*/React.createElement("div", {
+      key: e.id,
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${CATS[e.typ]?.color}25`,
+        borderLeft: `3px solid ${CATS[e.typ]?.color}`,
+        borderRadius: 12,
+        padding: "10px 14px",
+        marginBottom: 8,
+        display: "flex",
+        alignItems: "center",
+        gap: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18
+      }
+    }, e.getraenkEmoji || CATS[e.typ]?.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 13,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis"
+      }
+    }, e.beschreibung), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#475569",
+        marginTop: 2
+      }
+    }, "📅 ", e.datum, " • ", e.zeit, e.zahlart === "guthaben" ? " • 💰" : e.zahlart === "direkt" ? " • 💵" : "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 800,
+        color: CATS[e.typ]?.color,
+        flexShrink: 0
+      }
+    }, e.typ === "ausgabe" ? "-" : "+", e.betrag.toFixed(2), " €"))));
+  })(), tab === "buchen" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 14
+    }
+  }, "⚡ Schnell-Buchen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 12,
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid #003070",
+      borderRadius: 12,
+      padding: "10px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "📅"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#94a3b8",
+      fontWeight: 600
+    }
+  }, "Datum:"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: datum,
+    onChange: e => setDatum(e.target.value),
+    style: {
+      background: "transparent",
+      border: "none",
+      color: "#e2e8f0",
+      fontSize: 14,
+      fontWeight: 700,
+      outline: "none",
+      flex: 1
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZahlart("direkt"),
+    style: {
+      flex: 1,
+      padding: "10px",
+      borderRadius: 12,
+      cursor: "pointer",
+      border: `2px solid ${zahlart === "direkt" ? "#2288FF" : "#003070"}`,
+      background: zahlart === "direkt" ? "rgba(34,136,255,0.15)" : "rgba(255,255,255,0.03)",
+      color: zahlart === "direkt" ? "#2288FF" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "💵 Direkt zahlen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZahlart("guthaben"),
+    style: {
+      flex: 1,
+      padding: "10px",
+      borderRadius: 12,
+      cursor: "pointer",
+      border: `2px solid ${zahlart === "guthaben" ? "#4ade80" : "#003070"}`,
+      background: zahlart === "guthaben" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
+      color: zahlart === "guthaben" ? "#4ade80" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "💰 Guthaben")), isAdmin ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchMannschaftTab("meine"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchMannschaftTab === "meine" ? "#2288FF" : "#003070"}`,
+      background: buchMannschaftTab === "meine" ? "rgba(34,136,255,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchMannschaftTab === "meine" ? "#2288FF" : "#64748b",
+      fontWeight: 700,
+      fontSize: 12
+    }
+  }, "👥 Meine Mannschaft"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchMannschaftTab("sonstige"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchMannschaftTab === "sonstige" ? "#a78bfa" : "#003070"}`,
+      background: buchMannschaftTab === "sonstige" ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchMannschaftTab === "sonstige" ? "#a78bfa" : "#64748b",
+      fontWeight: 700,
+      fontSize: 12
+    }
+  }, "🌐 Sonstige")), buchMannschaftTab === "meine" && /*#__PURE__*/React.createElement("select", {
+    value: buchMannschaftWahl,
+    onChange: e => setBuchMannschaftWahl(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 10
+    }
+  }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "👤 SPIELER WÄHLEN — ", buchMannschaftTab === "meine" ? buchMannschaftWahl : "Sonstige Mannschaften"), (() => {
+    const gefilterteSpieler = spieler.filter(sp => {
+      const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+      const spMannschaft = bu?.mannschaft || "1. Herren";
+      return buchMannschaftTab === "meine" ? spMannschaft === buchMannschaftWahl : spMannschaft !== buchMannschaftWahl;
+    });
+    if (gefilterteSpieler.length === 0) return /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "#475569",
+        padding: "20px 0"
+      }
+    }, "Keine Spieler in dieser Auswahl");
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 8,
+        marginBottom: 12
+      }
+    }, gefilterteSpieler.map(sp => {
+      const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+      const g = bu?.guthaben || 0;
+      return /*#__PURE__*/React.createElement("button", {
+        key: sp.id,
+        onClick: () => setGwS(gwS === sp.id ? null : sp.id),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 14px",
+          borderRadius: 24,
+          cursor: "pointer",
+          border: `2px solid ${gwS === sp.id ? pCol(sp.id) : "#003070"}`,
+          background: gwS === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
+          color: gwS === sp.id ? pCol(sp.id) : "#94a3b8",
+          fontWeight: gwS === sp.id ? 800 : 500,
+          fontSize: 13
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          width: 28,
+          height: 28,
+          borderRadius: "50%",
+          background: pCol(sp.id),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          fontWeight: 800,
+          color: "#001A3A"
+        }
+      }, ava(sp.name)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", null, sp.name.split(" ")[0]), zahlart === "guthaben" && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: g > 0 ? "#4ade80" : "#f87171"
+        }
+      }, g.toFixed(2), " €")));
+    }));
+  })()) : (() => {
+    const meinSp = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
+    if (meinSp && gwS !== meinSp.id) {
+      setTimeout(() => setGwS(meinSp.id), 0);
+    }
+    return meinSp ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 12,
+        padding: "12px 16px",
+        borderRadius: 12,
+        background: "rgba(34,136,255,0.08)",
+        border: "1px solid #2288FF33",
+        display: "flex",
+        alignItems: "center",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        background: pCol(meinSp.id),
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 13,
+        fontWeight: 800,
+        color: "#001A3A"
+      }
+    }, ava(meinSp.name)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, meinSp.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: gut > 0 ? "#4ade80" : "#f87171",
+        fontWeight: 600
+      }
+    }, "💰 Guthaben: ", gut.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#2288FF",
+        fontWeight: 700
+      }
+    }, "✅ Ich")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        color: "#f87171",
+        padding: "16px",
+        fontSize: 13,
+        background: "rgba(248,113,113,0.08)",
+        borderRadius: 12,
+        marginBottom: 12
+      }
+    }, "⚠️ Kein Spieler-Profil gefunden. Bitte den Admin fragen.");
+  })(), gwS && zahlart === "guthaben" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12,
+      padding: "10px 14px",
+      borderRadius: 12,
+      background: gut > 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+      border: `1px solid ${gut > 0 ? "#4ade8044" : "#f8717144"}`,
+      fontSize: 13,
+      color: gut > 0 ? "#4ade80" : "#f87171",
+      fontWeight: 700
+    }
+  }, "💰 Guthaben: ", gut.toFixed(2), " € ", gut <= 0 ? "— Bitte aufladen!" : ""), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, buchKat === "getraenk" ? "🥤 GETRÄNK WÄHLEN" : "🛒 SONSTIGES WÄHLEN"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchKat("getraenk"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchKat === "getraenk" ? "#2288FF" : "#003070"}`,
+      background: buchKat === "getraenk" ? "rgba(34,136,255,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchKat === "getraenk" ? "#2288FF" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "🥤 Getränke"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setBuchKat("sonstiges"),
+    style: {
+      flex: 1,
+      padding: "9px",
+      borderRadius: 10,
+      cursor: "pointer",
+      border: `2px solid ${buchKat === "sonstiges" ? "#a78bfa" : "#003070"}`,
+      background: buchKat === "sonstiges" ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
+      color: buchKat === "sonstiges" ? "#a78bfa" : "#64748b",
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, "🛒 Sonstiges")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10
+    }
+  }, (buchKat === "getraenk" ? getraenke : sonstiges).map(g => {
+    const nok = zahlart === "guthaben" && gwS && gut < g.preis;
+    const akzent = buchKat === "getraenk" ? "#2288FF" : "#a78bfa";
+    return /*#__PURE__*/React.createElement("button", {
+      key: g.id,
+      onClick: () => buchKat === "getraenk" ? buchG(g) : buchS(g),
+      style: {
+        padding: "14px 10px",
+        borderRadius: 14,
+        cursor: "pointer",
+        border: `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
+        background: gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
+        color: gwS && !nok ? "#e2e8f0" : "#475569",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 6,
+        opacity: gwS && !nok ? 1 : 0.4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 26
+      }
+    }, g.emoji), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700
+      }
+    }, g.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: akzent,
+        fontWeight: 800
+      }
+    }, g.preis.toFixed(2), " €"));
+  })), gwS && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      padding: "10px 14px",
+      borderRadius: 12,
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid #2288FF44",
+      fontSize: 13,
+      color: "#2288FF",
+      textAlign: "center",
+      fontWeight: 600
+    }
+  }, "✅ ", spieler.find(s => s.id === gwS)?.name, " — ", zahlart === "guthaben" ? "💰 Guthaben" : "💵 Direkt")), tab === "neu" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 14
+    }
+  }, "✏️ Manueller Eintrag"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 16
+    }
+  }, Object.entries(CATS).map(([key, cat]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => setMForm(f => ({
+      ...f,
+      typ: key
+    })),
+    style: {
+      flex: 1,
+      padding: "10px 4px",
+      borderRadius: 11,
+      cursor: "pointer",
+      border: `2px solid ${mForm.typ === key ? cat.color : "#003070"}`,
+      background: mForm.typ === key ? `${cat.color}20` : "rgba(255,255,255,0.03)",
+      color: mForm.typ === key ? cat.color : "#64748b",
+      fontSize: 11,
+      fontWeight: 700,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 3
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, cat.emoji), cat.label))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "BETRAG (€)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    placeholder: "0.00",
+    value: mForm.betrag,
+    onChange: e => setMForm(f => ({
+      ...f,
+      betrag: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 12
+    }
+  }, "BESCHREIBUNG"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Trikots…",
+    value: mForm.beschreibung,
+    onChange: e => setMForm(f => ({
+      ...f,
+      beschreibung: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 12
+    }
+  }, "PERSON (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Max Mustermann",
+    value: mForm.person,
+    onChange: e => setMForm(f => ({
+      ...f,
+      person: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block",
+      marginTop: 12
+    }
+  }, "DATUM"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: mForm.datum,
+    onChange: e => setMForm(f => ({
+      ...f,
+      datum: e.target.value
+    })),
+    style: IS
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addManual,
+    style: {
+      width: "100%",
+      marginTop: 20,
+      padding: "15px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 14,
+      color: "white",
+      fontSize: 15,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Eintrag speichern")), tab === "verlauf" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 10
+    }
+  }, "📋 Verlauf"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "🔍 Suche nach Name, Artikel, Datum...",
+    value: vSuche,
+    onChange: e => setVSuche(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      marginBottom: 12
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 8,
+      flexWrap: "wrap"
+    }
+  }, [["alle", "Alle", "📋"], ["getraenk", "Getränk", "🥤"], ["sonstiges", "Sonstiges", "🛒"], ["einnahme", "Einnahme", "💰"], ["ausgabe", "Ausgabe", "🛍️"], ["spende", "Spende", "🤝"]].map(([k, l, e]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => setVF(k),
+    style: {
+      padding: "5px 11px",
+      borderRadius: 20,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600,
+      border: `1px solid ${vF === k ? "#0066CC" : "#003070"}`,
+      background: vF === k ? "rgba(0,102,204,0.2)" : "rgba(255,255,255,0.03)",
+      color: vF === k ? "#2288FF" : "#64748b"
+    }
+  }, e, " ", l))), spieler.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVS("alle"),
+    style: {
+      padding: "5px 11px",
+      borderRadius: 20,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600,
+      border: `1px solid ${vS === "alle" ? "#60a5fa" : "#003070"}`,
+      background: vS === "alle" ? "rgba(96,165,250,0.2)" : "rgba(255,255,255,0.03)",
+      color: vS === "alle" ? "#60a5fa" : "#64748b"
+    }
+  }, "👥 Alle"), spieler.map(sp => /*#__PURE__*/React.createElement("button", {
+    key: sp.id,
+    onClick: () => setVS(vS === sp.id ? "alle" : sp.id),
+    style: {
+      padding: "5px 11px",
+      borderRadius: 20,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 600,
+      border: `1px solid ${vS === sp.id ? pCol(sp.id) : "#003070"}`,
+      background: vS === sp.id ? `${pCol(sp.id)}22` : "rgba(255,255,255,0.03)",
+      color: vS === sp.id ? pCol(sp.id) : "#64748b"
+    }
+  }, sp.name.split(" ")[0]))), verl.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "40px 0"
+    }
+  }, "📭 Keine Einträge") : verl.map(e => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    style: {
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${CATS[e.typ]?.color}25`,
+      borderLeft: `3px solid ${CATS[e.typ]?.color}`,
+      borderRadius: 12,
+      padding: "12px 14px",
+      marginBottom: 9,
+      display: "flex",
+      alignItems: "center",
+      gap: 11
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20
+    }
+  }, e.getraenkEmoji || CATS[e.typ]?.emoji), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis"
+    }
+  }, e.beschreibung), e.person && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      marginTop: 2
+    }
+  }, "👤 ", e.person), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#475569",
+      marginTop: 2
+    }
+  }, "📅 ", e.datum, " • ", e.zeit, e.zahlart === "guthaben" ? " • 💰" : e.zahlart === "direkt" ? " • 💵" : "", e.gebuchtvon ? " • ✍️ " + e.gebuchtvon : "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 800,
+      color: CATS[e.typ]?.color
+    }
+  }, e.typ === "ausgabe" ? "-" : "+", e.betrag.toFixed(2), " €"), isAdmin && /*#__PURE__*/React.createElement("button", {
+    onClick: () => delE(e.id),
+    style: {
+      marginTop: 4,
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 6,
+      padding: "3px 8px",
+      fontSize: 11,
+      cursor: "pointer"
+    }
+  }, "🗑️"))))), tab === "übersicht" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 14
+    }
+  }, "📊 Übersicht"), [{
+    label: "Getränke",
+    value: gSum,
+    emoji: "🥤",
+    color: "#2288FF",
+    bg: "rgba(34,136,255,0.08)",
+    key: "getraenk"
+  }, {
+    label: "Sonstiges",
+    value: sSum,
+    emoji: "🛒",
+    color: "#a78bfa",
+    bg: "rgba(167,139,250,0.08)",
+    key: "sonstiges"
+  }, {
+    label: "Einnahmen",
+    value: ein,
+    emoji: "💰",
+    color: "#4ade80",
+    bg: "rgba(74,222,128,0.08)",
+    key: "einnahme"
+  }, {
+    label: "Ausgaben",
+    value: aus,
+    emoji: "🛍️",
+    color: "#f87171",
+    bg: "rgba(248,113,113,0.08)",
+    key: "ausgabe"
+  }, {
+    label: "Spenden",
+    value: spe,
+    emoji: "🤝",
+    color: "#60a5fa",
+    bg: "rgba(96,165,250,0.08)",
+    key: "spende"
+  }].map(s => /*#__PURE__*/React.createElement("div", {
+    key: s.key,
+    style: {
+      background: s.bg,
+      border: `1px solid ${s.color}30`,
+      borderRadius: 13,
+      padding: "14px 16px",
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 11,
+      background: `${s.color}20`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 20
+    }
+  }, s.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, s.label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 21,
+      fontWeight: 800,
+      color: s.color
+    }
+  }, s.value.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: "auto",
+      fontSize: 12,
+      color: "#64748b"
+    }
+  }, eintraege.filter(e => e.typ === s.key).length, " ×"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "linear-gradient(135deg,#003F8A,#001F50)",
+      border: "2px solid #0055AA",
+      borderRadius: 15,
+      padding: "18px 16px",
+      marginTop: 4,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, "Kassenstand gesamt"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      color: kasse >= 0 ? "#4ade80" : "#f87171",
+      marginTop: 4
+    }
+  }, kasse >= 0 ? "+" : "", kasse.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 34
+    }
+  }, kasse >= 0 ? "✅" : "⚠️")), (() => {
+    const meineMannschaftUebersicht = cu.mannschaft || "1. Herren";
+    const eigeneSpielerIdsUebersicht = new Set(spieler.filter(sp => {
+      const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+      return bu && (bu.mannschaft || "1. Herren") === meineMannschaftUebersicht;
+    }).map(sp => sp.id));
+    const strafenBezahltSumme = strafenEintraege.filter(e => e.bezahlt && eigeneSpielerIdsUebersicht.has(e.spielerId)).reduce((s, e) => s + e.betrag, 0);
+    const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaftUebersicht && b.rolle !== "admin");
+    const guthabenSumme = eigeneBenutzer.reduce((s, b) => s + (b.guthaben || 0), 0);
+    const guthabenAnzahl = eigeneBenutzer.filter(b => (b.guthaben || 0) > 0).length;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg,#14532D,#052e16)",
+        border: "2px solid #16a34a",
+        borderRadius: 15,
+        padding: "16px 16px",
+        marginTop: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#86efac"
+      }
+    }, "⚖️ Strafenkasse (bezahlt)"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        color: "#4ade80",
+        marginTop: 4
+      }
+    }, strafenBezahltSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        marginTop: 2
+      }
+    }, "Separat — nicht im Kassenstand enthalten")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 30
+      }
+    }, "⚖️")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg,#1e3a5f,#0f2440)",
+        border: "2px solid #2288FF",
+        borderRadius: 15,
+        padding: "16px 16px",
+        marginTop: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#93c5fd"
+      }
+    }, "💰 Guthaben gesamt"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        color: guthabenSumme > 0 ? "#60a5fa" : "#f87171",
+        marginTop: 4
+      }
+    }, guthabenSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        marginTop: 2
+      }
+    }, guthabenAnzahl, " Spieler mit aktivem Guthaben — fließt erst beim Verbrauch in den Kassenstand ein")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 30
+      }
+    }, "💰")));
+  })(), (() => {
+    const MONATE_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    // Alle Monate aus den Einträgen ermitteln
+    const monatsMap = {};
+    eintraege.forEach(e => {
+      if (!e.datumRaw) return;
+      const [y, m] = e.datumRaw.split("-");
+      if (!y || !m) return;
+      const key = `${y}-${m}`;
+      if (!monatsMap[key]) monatsMap[key] = {
+        key,
+        y,
+        m,
+        getraenk: 0,
+        sonstiges: 0,
+        einnahme: 0,
+        ausgabe: 0,
+        spende: 0
+      };
+      if (["getraenk", "sonstiges", "einnahme", "ausgabe", "spende"].includes(e.typ)) monatsMap[key][e.typ] += e.betrag || 0;
+    });
+    const monate = Object.values(monatsMap).sort((a, b) => b.key.localeCompare(a.key));
+    if (monate.length === 0) return null;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setMonatsOffen(v => !v),
+      style: {
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: 0,
+        margin: "20px 0 10px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontWeight: 700,
+        letterSpacing: 1,
+        textTransform: "uppercase"
+      }
+    }, "📆 Monatsauswertung"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "#94a3b8",
+        transition: "transform 0.2s",
+        transform: monatsOffen ? "rotate(0deg)" : "rotate(-90deg)"
+      }
+    }, "▼")), monatsOffen && monate.map(({
+      key,
+      y,
+      m,
+      getraenk,
+      sonstiges,
+      einnahme,
+      ausgabe,
+      spende
+    }) => {
+      const einnahmen = einnahme + spende + getraenk + sonstiges;
+      const bilanz = einnahmen - ausgabe;
+      return /*#__PURE__*/React.createElement("div", {
+        key: key,
+        style: {
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid #003070",
+          borderRadius: 12,
+          padding: "12px 14px",
+          marginBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 700,
+          fontSize: 14
+        }
+      }, MONATE_DE[parseInt(m) - 1], " ", y), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 800,
+          fontSize: 15,
+          color: bilanz >= 0 ? "#4ade80" : "#f87171"
+        }
+      }, bilanz >= 0 ? "+" : "", bilanz.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6
+        }
+      }, getraenk > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          background: "rgba(34,136,255,0.12)",
+          color: "#93c5fd",
+          padding: "2px 8px",
+          borderRadius: 10
+        }
+      }, "🥤 ", getraenk.toFixed(2), " €"), sonstiges > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          background: "rgba(167,139,250,0.12)",
+          color: "#c4b5fd",
+          padding: "2px 8px",
+          borderRadius: 10
+        }
+      }, "🛒 ", sonstiges.toFixed(2), " €"), einnahme > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          background: "rgba(74,222,128,0.12)",
+          color: "#86efac",
+          padding: "2px 8px",
+          borderRadius: 10
+        }
+      }, "💰 ", einnahme.toFixed(2), " €"), spende > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          background: "rgba(96,165,250,0.12)",
+          color: "#bfdbfe",
+          padding: "2px 8px",
+          borderRadius: 10
+        }
+      }, "🤝 ", spende.toFixed(2), " €"), ausgabe > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          background: "rgba(248,113,113,0.12)",
+          color: "#fca5a5",
+          padding: "2px 8px",
+          borderRadius: 10
+        }
+      }, "🛍️ -", ausgabe.toFixed(2), " €")));
+    }));
+  })(), benutzer.filter(b => b.rolle !== "admin").length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setGuthabenOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      margin: "20px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, "💰 Guthaben Übersicht"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: guthabenOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), guthabenOffen && benutzer.filter(b => b.rolle !== "admin").sort((a, b) => (b.guthaben || 0) - (a.guthaben || 0)).map(b => /*#__PURE__*/React.createElement("div", {
+    key: b.id,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${(b.guthaben || 0) > 0 ? "#4ade8025" : "#f8717125"}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      background: pCol(b.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 800,
+      color: "#001A3A"
+    }
+  }, ava(b.vorname + " " + b.nachname)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, b.vorname, " ", b.nachname), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, b.mannschaft || "")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      color: (b.guthaben || 0) > 0 ? "#4ade80" : "#f87171",
+      fontSize: 15
+    }
+  }, (b.guthaben || 0).toFixed(2), " €")))), spieler.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTopTrinkerOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      margin: "20px 0 10px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, "🏆 Top-Trinker & Käufer"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: topTrinkerOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), topTrinkerOffen && spieler.map(sp => {
+    const getraenkEintraege = eintraege.filter(e => e.typ === "getraenk" && e.spielerId === sp.id);
+    const sonstigesEintraege = eintraege.filter(e => e.typ === "sonstiges" && e.spielerId === sp.id);
+    const gSumme = getraenkEintraege.reduce((x, e) => x + e.betrag, 0);
+    const sSumme = sonstigesEintraege.reduce((x, e) => x + e.betrag, 0);
+    const gesamt = gSumme + sSumme;
+    // Zähle je Artikel-Name
+    const gCount = {};
+    getraenkEintraege.forEach(e => {
+      gCount[e.beschreibung] = (gCount[e.beschreibung] || 0) + 1;
+    });
+    const sCount = {};
+    sonstigesEintraege.forEach(e => {
+      sCount[e.beschreibung] = (sCount[e.beschreibung] || 0) + 1;
+    });
+    return {
+      sp,
+      gesamt,
+      gCount,
+      sCount,
+      gSumme,
+      sSumme
+    };
+  }).filter(x => x.gesamt > 0).sort((a, b) => b.gesamt - a.gesamt).map(({
+    sp,
+    gesamt,
+    gCount,
+    sCount,
+    gSumme,
+    sSumme
+  }) => /*#__PURE__*/React.createElement("div", {
+    key: sp.id,
+    style: {
+      padding: "12px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${pCol(sp.id)}25`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      background: pCol(sp.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 800,
+      color: "#001A3A",
+      flexShrink: 0
+    }
+  }, ava(sp.name)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, sp.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      color: pCol(sp.id),
+      fontSize: 15
+    }
+  }, gesamt.toFixed(2), " €")), Object.keys(gCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: 48,
+      marginBottom: 6,
+      padding: "6px 10px",
+      background: "rgba(34,136,255,0.06)",
+      borderRadius: 8,
+      borderLeft: "2px solid #2288FF"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 3
+    }
+  }, "🥤 GETRÄNKE — ", gSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4
+    }
+  }, Object.entries(gCount).sort((a, b) => b[1] - a[1]).map(([n, c]) => /*#__PURE__*/React.createElement("span", {
+    key: n,
+    style: {
+      fontSize: 11,
+      color: "#93c5fd",
+      background: "rgba(34,136,255,0.12)",
+      padding: "2px 7px",
+      borderRadius: 12
+    }
+  }, n, " ", /*#__PURE__*/React.createElement("strong", null, "×", c))))), Object.keys(sCount).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: 48,
+      padding: "6px 10px",
+      background: "rgba(167,139,250,0.06)",
+      borderRadius: 8,
+      borderLeft: "2px solid #a78bfa"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: "#a78bfa",
+      fontWeight: 700,
+      marginBottom: 3
+    }
+  }, "🛒 SONSTIGES — ", sSumme.toFixed(2), " €"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 4
+    }
+  }, Object.entries(sCount).sort((a, b) => b[1] - a[1]).map(([n, c]) => /*#__PURE__*/React.createElement("span", {
+    key: n,
+    style: {
+      fontSize: 11,
+      color: "#c4b5fd",
+      background: "rgba(167,139,250,0.12)",
+      padding: "2px 7px",
+      borderRadius: 12
+    }
+  }, n, " ", /*#__PURE__*/React.createElement("strong", null, "×", c))))))))), tab === "spieler" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSpielerListeOffen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: 0,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, "👥 Spieler verwalten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#94a3b8",
+      transition: "transform 0.2s",
+      transform: spielerListeOffen ? "rotate(0deg)" : "rotate(-90deg)"
+    }
+  }, "▼")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Name eingeben…",
+    value: nName,
+    onChange: e => setNName(e.target.value),
+    onKeyDown: e => e.key === "Enter" && addSp(),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addSp,
+    style: {
+      padding: "0 18px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontWeight: 800,
+      fontSize: 20,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "+")), spielerListeOffen && spieler.map(sp => /*#__PURE__*/React.createElement("div", {
+    key: sp.id
+  }, editSp?.id === sp.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: editSp.name,
+    onChange: e => setEditSp(s => ({
+      ...s,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditSp,
+    style: {
+      padding: "0 14px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSp(null),
+    style: {
+      padding: "0 12px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer"
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "12px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${pCol(sp.id)}25`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 38,
+      height: 38,
+      borderRadius: "50%",
+      background: pCol(sp.id),
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      fontWeight: 800,
+      color: "#001A3A"
+    }
+  }, ava(sp.name)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      fontWeight: 700
+    }
+  }, sp.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#64748b",
+      marginRight: 4
+    }
+  }, eintraege.filter(e => e.spielerId === sp.id).length, " Buchungen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditSp(sp),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delSp(sp.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "🗑️")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      margin: "24px 0 14px"
+    }
+  }, "🥤 Getränke verwalten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap",
+      marginBottom: 10
+    }
+  }, EMOJIS.map(em => /*#__PURE__*/React.createElement("button", {
+    key: em,
+    onClick: () => setGForm(f => ({
+      ...f,
+      emoji: em
+    })),
+    style: {
+      fontSize: 20,
+      background: gForm.emoji === em ? "rgba(34,136,255,0.2)" : "rgba(255,255,255,0.03)",
+      border: `1px solid ${gForm.emoji === em ? "#2288FF" : "#003070"}`,
+      borderRadius: 8,
+      padding: "4px 7px",
+      cursor: "pointer"
+    }
+  }, em))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Name",
+    value: gForm.name,
+    onChange: e => setGForm(f => ({
+      ...f,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "€",
+    value: gForm.preis,
+    onChange: e => setGForm(f => ({
+      ...f,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addGt,
+    style: {
+      padding: "0 16px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontWeight: 800,
+      fontSize: 20,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "+")), getraenke.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g.id
+  }, editG?.id === g.id ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 7,
+      marginBottom: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, editG.emoji), /*#__PURE__*/React.createElement("input", {
+    value: editG.name,
+    onChange: e => setEditG(x => ({
+      ...x,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editG.preis,
+    onChange: e => setEditG(x => ({
+      ...x,
+      preis: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: saveEditGt,
+    style: {
+      padding: "0 12px",
+      background: "#4ade8022",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontWeight: 700,
+      height: 48
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditG(null),
+    style: {
+      padding: "0 10px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer",
+      height: 48
+    }
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 8,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid #2288FF22"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, g.emoji), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      fontWeight: 700
+    }
+  }, g.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#2288FF",
+      fontWeight: 800
+    }
+  }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditG(g),
+    style: {
+      background: "rgba(34,136,255,0.1)",
+      border: "1px solid rgba(34,136,255,0.3)",
+      color: "#2288FF",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delGt(g.id),
+    style: {
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.3)",
+      color: "#f87171",
+      borderRadius: 7,
+      padding: "4px 9px",
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "🗑️"))))), tab === "sonstiges" && /*#__PURE__*/React.createElement(SonstigesTab, {
+    sonstiges: sonstiges,
+    toast: toast
+  }), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
+    benutzer: benutzer,
+    spieler: spieler,
+    termine: termine,
+    toast: toast,
+    cu: cu,
+    kannBearbeiten: isEventorga
+  }), tab === "strafen" && isStrafenwart && /*#__PURE__*/React.createElement(StrafenTab, {
+    benutzer: benutzer,
+    spieler: spieler,
+    strafenEintraege: strafenEintraege,
+    toast: toast,
+    cu: cu
+  }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+    schwarzesBrett: schwarzesBrett,
+    cu: cu,
+    toast: toast
+  })), tab === "benutzer" && isAdmin && /*#__PURE__*/React.createElement(BenutzerTab, {
+    benutzer: benutzer,
+    cu: cu,
+    toast: toast,
+    eintraege: eintraege,
+    schwarzesBrett: schwarzesBrett
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "100%",
+      maxWidth: 480,
+      background: "rgba(0,17,46,0.97)",
+      backdropFilter: "blur(20px)",
+      borderTop: "1px solid #003F8A",
+      display: "flex",
+      padding: "8px 0 20px",
+      zIndex: 20
+    }
+  }, navs.map(([key, emoji, label]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => setTab(key),
+    style: {
+      flex: 1,
+      background: "none",
+      border: "none",
+      color: tab === key ? "#2288FF" : "#475569",
+      cursor: "pointer",
+      padding: "6px 0",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 3
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18
+    }
+  }, emoji), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 9,
+      fontWeight: tab === key ? 700 : 400
+    }
+  }, label)))), toastMsg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 70,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "#003F8A",
+      border: "1px solid #0055AA",
+      color: "#e2e8f0",
+      padding: "11px 22px",
+      borderRadius: 12,
+      fontSize: 13,
+      fontWeight: 700,
+      zIndex: 100,
+      boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
+      whiteSpace: "nowrap"
+    }
+  }, toastMsg));
+}
+function useOnline() {
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return online;
+}
+function OfflineBanner() {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 200,
+      background: "linear-gradient(135deg,#7C2D12,#451A03)",
+      borderBottom: "2px solid #f87171",
+      padding: "10px 16px",
+      textAlign: "center",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 18
+    }
+  }, "📡"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#fca5a5",
+      fontSize: 13,
+      fontWeight: 700
+    }
+  }, "Keine Internetverbindung — Daten werden synchronisiert, sobald du wieder online bist"));
+}
+function App() {
+  const online = useOnline();
+  const [cu, setCu] = useState(() => ld(AUTH_KEY, null));
+  const [benutzer, setBenutzer] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    return col("benutzer").onSnapshot(snap => {
+      const list = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      if (list.length === 0) col("benutzer").add({
+        vorname: "Admin",
+        nachname: "HSG",
+        benutzername: "admin.hsg",
+        passwort: "hsgherren33",
+        rolle: "admin",
+        mannschaft: "1. Herren",
+        guthaben: 0
+      });
+      setBenutzer(list);
+      setLoading(false);
+    });
+  }, []);
+  if (loading) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "#00112E",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      borderRadius: 16,
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 36
+    }
+  }, "🤾"));
+  return /*#__PURE__*/React.createElement(React.Fragment, null, !online && /*#__PURE__*/React.createElement(OfflineBanner, null), !cu ? /*#__PURE__*/React.createElement(Login, {
+    onLogin: u => {
+      sv(AUTH_KEY, u);
+      setCu(u);
+    },
+    benutzer: benutzer
+  }) : /*#__PURE__*/React.createElement(MainApp, {
+    cu: cu,
+    onLogout: () => {
+      sv(AUTH_KEY, null);
+      setCu(null);
+    }
+  }));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+
+</script>
+</body>
 </html>
