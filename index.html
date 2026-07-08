@@ -626,6 +626,14 @@ function BenutzerTab({
     value: edit.handballId || "",
     onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "👕 TRIKOTNUMMER (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    placeholder: "z.B. 7",
+    value: edit.trikotnummer || "",
+    onChange: e => setEdit(x => ({...x, trikotnummer: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
