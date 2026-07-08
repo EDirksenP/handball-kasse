@@ -2157,7 +2157,8 @@ function TermineTab({
           return {
             vorname: bu?.vorname || name.split(" ")[0],
             nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
-            handballId: bu?.handballId || "—",
+            handballId: bu?.handballId || " ",
+            trikotnummer: bu?.trikotnummer || " ",
             status: zusagen.includes(name) ? "✅" : "❓"
           };
         });
@@ -2205,7 +2206,7 @@ function TermineTab({
 <table>
   <thead>
     <tr>
-      <th>#</th>
+      <th>Trikot</th>
       <th>Vorname</th>
       <th>Nachname</th>
       <th>Handball-ID</th>
@@ -2213,9 +2214,9 @@ function TermineTab({
     </tr>
   </thead>
   <tbody>
-    ${spielerMitId.map((sp, i) => `
+    ${[...spielerMitId].sort((a,b)=>{const na=parseInt(a.trikotnummer)||999;const nb=parseInt(b.trikotnummer)||999;return na-nb;}).map((sp) => `
     <tr>
-      <td>${i + 1}</td>
+      <td><strong>${sp.trikotnummer}</strong></td>
       <td>${sp.vorname}</td>
       <td>${sp.nachname}</td>
       <td><strong>${sp.handballId}</strong></td>
