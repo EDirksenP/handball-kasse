@@ -32,6 +32,7 @@
   window.db = firebase.firestore();
 </script>
 <script>
+
 const {
   useState,
   useEffect
@@ -484,7 +485,8 @@ function BenutzerTab({
       rolle: edit.rolle,
       mannschaft: edit.mannschaft || "1. Herren",
       guthaben: edit.guthaben || 0,
-      geburtstag: edit.geburtstag || ""
+      geburtstag: edit.geburtstag || "",
+      handballId: edit.handballId || ""
     });
     setEdit(null);
     toast("✅ Gespeichert");
@@ -616,6 +618,14 @@ function BenutzerTab({
       marginTop: 4,
       marginBottom: 10
     }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "🏐 HANDBALL-ID (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. 12345678",
+    value: edit.handballId || "",
+    onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -2128,7 +2138,109 @@ function TermineTab({
       style: {
         fontSize: 16
       }
-    }, "📲"), " WhatsApp-Text kopieren"), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
+    }, "📲"), " WhatsApp-Text kopieren"), t.typ === "punktspiel" && kannBearbeiten && /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const zusagen = (t.zusagen || []);
+        const vielleicht = (t.vielleicht || []).map(v => v.name || v);
+        const alleSpieler = [...new Set([...zusagen, ...vielleicht])];
+        const spielerMitId = alleSpieler.map(name => {
+          const bu = benutzer.find(b => b.vorname + " " + b.nachname === name);
+          return {
+            vorname: bu?.vorname || name.split(" ")[0],
+            nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
+            handballId: bu?.handballId || "—",
+            status: zusagen.includes(name) ? "✅" : "❓"
+          };
+        });
+        const datum = new Date(t.datum + "T12:00:00");
+        const datumStr = datum.toLocaleDateString("de-DE", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
+        const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Spielberechtigungsnachweis</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 30px; color: #111; }
+  .header { text-align: center; border-bottom: 3px solid #003F8A; padding-bottom: 16px; margin-bottom: 24px; }
+  .header h1 { color: #003F8A; font-size: 22px; margin: 0 0 6px 0; }
+  .header h2 { color: #333; font-size: 16px; margin: 0 0 4px 0; font-weight: normal; }
+  .meta { display: flex; gap: 30px; justify-content: center; margin-top: 10px; font-size: 13px; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th { background: #003F8A; color: white; padding: 10px 14px; text-align: left; font-size: 13px; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
+  tr:nth-child(even) td { background: #f4f7fb; }
+  .status-ok { color: #16a34a; font-weight: bold; }
+  .status-vl { color: #d97706; font-weight: bold; }
+  .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
+  .badge { display: inline-block; background: #e8f0fe; color: #003F8A; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🤾 3. Herren HSG Emden</h1>
+  <h2>Spielberechtigungsnachweis</h2>
+  <div class="meta">
+    <span>🏆 ${t.titel}</span>
+    <span>📅 ${datumStr}</span>
+    <span>🕐 ${t.uhrzeit} Uhr</span>
+    <span>📍 ${t.ort}</span>
+  </div>
+</div>
+<div style="margin-bottom:10px; font-size:13px;">
+  <span class="badge">✅ ${zusagen.length} Zusagen</span>
+  &nbsp;
+  <span class="badge" style="background:#fef3c7;color:#92400e;">❓ ${vielleicht.length} Vielleicht</span>
+  &nbsp;
+  <strong>${alleSpieler.length} Spieler gesamt</strong>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Vorname</th>
+      <th>Nachname</th>
+      <th>Handball-ID</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${spielerMitId.map((sp, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${sp.vorname}</td>
+      <td>${sp.nachname}</td>
+      <td><strong>${sp.handballId}</strong></td>
+      <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
+    </tr>`).join("")}
+  </tbody>
+</table>
+<div class="footer">
+  Erstellt am ${new Date().toLocaleDateString("de-DE")} um ${new Date().toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})} Uhr · HSG Emden Kasse App
+</div>
+</body>
+</html>`;
+        const win = window.open("", "_blank");
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => win.print(), 500);
+      },
+      style: {
+        width: "100%",
+        marginTop: 8,
+        padding: "10px",
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.4)",
+        borderRadius: 10,
+        color: "#60a5fa",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {style:{fontSize:16}}, "📄"), " Spielerliste als PDF"), kannBearbeiten && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 12,
         paddingTop: 12,
@@ -3027,6 +3139,19 @@ function MainApp({
     neu: "",
     neu2: ""
   });
+  const meinBenutzerObj = benutzer.find(b => b.id === cu.id);
+  const [handballId, setHandballId] = useState("");
+  const [handballIdGespeichert, setHandballIdGespeichert] = useState(false);
+  useEffect(() => {
+    if(meinBenutzerObj?.handballId) setHandballId(meinBenutzerObj.handballId);
+  }, [meinBenutzerObj?.handballId]);
+  const speichereHandballId = async() => {
+    if(!handballId.trim()) return toast("⚠️ Bitte eine Handball-ID eingeben!");
+    await ref("benutzer", cu.id).update({handballId: handballId.trim()});
+    setHandballIdGespeichert(true);
+    setTimeout(() => setHandballIdGespeichert(false), 2000);
+    toast("✅ Handball-ID gespeichert!");
+  };
   const aendereMeinPasswort = async () => {
     const meinBenutzer = benutzer.find(b => b.id === cu.id);
     if (!meinBenutzer) return toast("⚠️ Benutzer nicht gefunden!");
@@ -3892,14 +4017,22 @@ function MainApp({
         textTransform: "uppercase",
         marginBottom: 12
       }
-    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("label", {
-      style: {
-        fontSize: 11,
-        color: "#94a3b8",
-        fontWeight: 700,
-        display: "block"
-      }
-    }, "AKTUELLES PASSWORT"), /*#__PURE__*/React.createElement("input", {
+    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("div", {
+      style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,marginTop:4}
+    }, "🏐 Handball-ID"), /*#__PURE__*/React.createElement("div", {
+      style: {display:"flex",gap:8,marginBottom:16}
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      placeholder: "z.B. 12345678",
+      value: handballId,
+      onChange: e => setHandballId(e.target.value),
+      style: {...IS, marginTop:0, flex:1}
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: speichereHandballId,
+      style: {padding:"0 14px",background:handballIdGespeichert?"#16a34a":"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:13,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}
+    }, handballIdGespeichert ? "✅ Gespeichert!" : "💾 Speichern")), /*#__PURE__*/React.createElement("div", {
+      style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:12}
+    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("input", {
       type: "password",
       placeholder: "Aktuelles Passwort",
       value: pwForm.alt,
