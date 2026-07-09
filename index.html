@@ -3047,10 +3047,7 @@ function MannschaftsKasseTab({
   isKasse,
   toast
 }) {
-  const {
-    useState: useS,
-    useEffect: useE
-  } = React;
+  const useS = useState;
   const meineMannschaft = cu.mannschaft || "1. Herren";
   const PAYPAL = "https://www.paypal.me/HandballEMD";
   const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
