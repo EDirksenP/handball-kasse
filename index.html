@@ -898,28 +898,9 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")),
-  /*#__PURE__*/React.createElement("div", null)),
-
-  /*#__PURE__*/React.createElement("div", {
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement("div", {
     style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
-  },
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:10}}, "📋 Mitgliederliste als PDF"),
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine druckbare Mitgliederliste mit Trikotnummer, Position und Handball-ID."),
-    /*#__PURE__*/React.createElement("select", {
-      value: pdfMannschaft,
-      onChange: e => setPdfMannschaft(e.target.value),
-      style: {...IS, marginTop:0, marginBottom:10}
-    },
-      MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {key:m, value:m}, m))
-    ),
-    /*#__PURE__*/React.createElement("button", {
-      onClick: erstelleMitgliederliste,
-      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}
-    }, "📄 Mitgliederliste erstellen")
-  ),
-
-  /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+  }, /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:10}}, "📋 Mitgliederliste als PDF"), /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine druckbare Mitgliederliste mit Trikotnummer, Position und Handball-ID."), /*#__PURE__*/React.createElement("select", {value: pdfMannschaft, onChange: e => setPdfMannschaft(e.target.value), style: {...IS, marginTop:0, marginBottom:10}}, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {key:m, value:m}, m))), /*#__PURE__*/React.createElement("button", {onClick: erstelleMitgliederliste, style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}}, "📄 Mitgliederliste erstellen")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
     schwarzesBrett: schwarzesBrett || [],
     cu: cu,
     toast: toast
