@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3.Herren HSG Emden</title>
+  <title>3. Herren HSG Emden</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -1260,6 +1260,32 @@ function StrafenTab({
     });
     toast(`⚖️ ${st.grund} (${st.betrag.toFixed(2)} €) für ${sp.name} verhängt!`);
   };
+  const speichereManuell = async() => {
+    const betrag = parseFloat(manuellForm.betrag.replace(",","."));
+    if(!manuellForm.beschreibung.trim()) return toast("⚠️ Bitte eine Beschreibung eingeben!");
+    if(!betrag || betrag <= 0) return toast("⚠️ Bitte einen gültigen Betrag eingeben!");
+    await col("mannschaftskasse").add({
+      periode: anzeigeKey,
+      mannschaft: meineMannschaft,
+      typ: manuellForm.typ,
+      beschreibung: manuellForm.beschreibung.trim(),
+      betrag: manuellForm.typ === "ausgabe" ? -betrag : betrag,
+      bezahlt: true,
+      manuell: true,
+      ersteller: cu.vorname + " " + cu.nachname,
+      datum: new Date().toLocaleDateString("de-DE"),
+      ts: Date.now()
+    });
+    setManuellForm({beschreibung:"", betrag:"", typ:"ausgabe"});
+    setZeigeManuell(false);
+    toast(manuellForm.typ === "ausgabe" ? `✅ Ausgabe gespeichert!` : `✅ Einnahme gespeichert!`);
+  };
+
+  const loescheEintrag = async(id) => {
+    await ref("mannschaftskasse", id).delete();
+    toast("🗑️ Gelöscht");
+  };
+
   const bestaetigen = async e => {
     await ref("strafen", e.id).update({
       bezahlt: true
@@ -3058,6 +3084,8 @@ function MannschaftsKasseTab({
   const [zeigeForm, setZeigeForm] = useS(false);
   const [formMonat, setFormMonat] = useS(heute.getMonth());
   const [formJahr, setFormJahr] = useS(heute.getFullYear());
+  const [zeigeManuell, setZeigeManuell] = useS(false);
+  const [manuellForm, setManuellForm] = useS({beschreibung:"", betrag:"", typ:"ausgabe"});
   const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaft && b.benutzername !== "admin.3hsg" && b.rolle !== "admin");
   const periodenKey = `${formJahr}-${String(formMonat + 1).padStart(2, "0")}`;
   const anzeigeKey = `${jahr}-${String(monat + 1).padStart(2, "0")}`;
@@ -3066,8 +3094,13 @@ function MannschaftsKasseTab({
   const periodeEintraege = mannschaftskasse.filter(e => e.periode === anzeigeKey && (e.mannschaft || "1. Herren") === meineMannschaft);
 
   // Gesamtübersicht
-  const gesamtBezahlt = periodeEintraege.filter(e => e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
-  const gesamtOffen = periodeEintraege.filter(e => !e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
+  const manuellEintraege = periodeEintraege.filter(e => e.manuell);
+  const beitragsEintraege = periodeEintraege.filter(e => !e.manuell);
+  const gesamtBezahlt = beitragsEintraege.filter(e => e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
+  const gesamtOffen = beitragsEintraege.filter(e => !e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
+  const gesamtAusgaben = manuellEintraege.filter(e => (e.betrag||0) < 0).reduce((s, e) => s + (e.betrag || 0), 0);
+  const gesamtEinnahmen = manuellEintraege.filter(e => (e.betrag||0) > 0).reduce((s, e) => s + (e.betrag || 0), 0);
+  const kassenstand = gesamtBezahlt + gesamtEinnahmen + gesamtAusgaben;
   const erstellePeriode = async () => {
     // Check if period already exists
     const exists = mannschaftskasse.some(e => e.periode === periodenKey && (e.mannschaft || "1. Herren") === meineMannschaft);
@@ -3203,7 +3236,64 @@ function MannschaftsKasseTab({
       color: "#f87171",
       marginTop: 4
     }
-  }, gesamtOffen.toFixed(2), " €"))), isKasse && /*#__PURE__*/React.createElement("div", {
+  }, gesamtOffen.toFixed(2), " €"))),
+
+  /*#__PURE__*/React.createElement("div", {
+    style: {background:"linear-gradient(135deg,#003F8A,#001F50)",border:"2px solid #0055AA",borderRadius:12,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}
+  },
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#93c5fd"}}, "💵 KASSENSTAND"),
+      /*#__PURE__*/React.createElement("div", {style:{fontSize:22,fontWeight:900,color:kassenstand>=0?"#4ade80":"#f87171",marginTop:4}}, kassenstand>=0?"+":"", kassenstand.toFixed(2), " €")
+    ),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:28}}, kassenstand>=0?"✅":"⚠️")
+  ),
+
+  isKasse && /*#__PURE__*/React.createElement("div", {style:{marginBottom:12}},
+    !zeigeManuell ?
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setZeigeManuell(true),
+        style: {width:"100%",padding:"10px",background:"rgba(255,255,255,0.04)",border:"1px solid #003070",borderRadius:10,color:"#94a3b8",fontSize:13,fontWeight:700,cursor:"pointer"}
+      }, "➕ Manuelle Buchung"),
+      /*#__PURE__*/React.createElement("div", {
+        style: {background:"rgba(255,255,255,0.04)",border:"1px solid #003070",borderRadius:12,padding:14}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",fontWeight:700,marginBottom:10}}, "➕ Manuelle Buchung"),
+        /*#__PURE__*/React.createElement("div", {style:{display:"flex",gap:6,marginBottom:10}},
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setManuellForm(f=>({...f,typ:"ausgabe"})),
+            style: {flex:1,padding:"8px",borderRadius:8,cursor:"pointer",border:`2px solid ${manuellForm.typ==="ausgabe"?"#f87171":"#003070"}`,background:manuellForm.typ==="ausgabe"?"rgba(248,113,113,0.15)":"rgba(255,255,255,0.03)",color:manuellForm.typ==="ausgabe"?"#f87171":"#64748b",fontWeight:700,fontSize:12}
+          }, "🛍️ Ausgabe"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setManuellForm(f=>({...f,typ:"einnahme"})),
+            style: {flex:1,padding:"8px",borderRadius:8,cursor:"pointer",border:`2px solid ${manuellForm.typ==="einnahme"?"#4ade80":"#003070"}`,background:manuellForm.typ==="einnahme"?"rgba(74,222,128,0.15)":"rgba(255,255,255,0.03)",color:manuellForm.typ==="einnahme"?"#4ade80":"#64748b",fontWeight:700,fontSize:12}
+          }, "💰 Einnahme")
+        ),
+        /*#__PURE__*/React.createElement("input", {
+          type:"text", placeholder:"Beschreibung (z.B. Busfahrt, Spritgeld...)",
+          value: manuellForm.beschreibung,
+          onChange: e => setManuellForm(f=>({...f,beschreibung:e.target.value})),
+          style: {...IS, marginTop:0, marginBottom:8}
+        }),
+        /*#__PURE__*/React.createElement("input", {
+          type:"number", placeholder:"Betrag in € (z.B. 100)",
+          value: manuellForm.betrag,
+          onChange: e => setManuellForm(f=>({...f,betrag:e.target.value})),
+          style: {...IS, marginTop:0, marginBottom:10}
+        }),
+        /*#__PURE__*/React.createElement("div", {style:{display:"flex",gap:8}},
+          /*#__PURE__*/React.createElement("button", {
+            onClick: speichereManuell,
+            style: {flex:1,padding:"11px",background:`linear-gradient(135deg,${manuellForm.typ==="ausgabe"?"#991b1b,#f87171":"#14532d,#4ade80"})`,border:"none",borderRadius:10,color:"white",fontWeight:800,fontSize:13,cursor:"pointer"}
+          }, manuellForm.typ==="ausgabe"?"🛍️ Ausgabe buchen":"💰 Einnahme buchen"),
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setZeigeManuell(false),
+            style: {padding:"11px 14px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer"}
+          }, "✕")
+        )
+      )
+  ),
+
+  isKasse && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 16
     }
@@ -3406,7 +3496,25 @@ function MannschaftsKasseTab({
       cursor: "pointer",
       flexShrink: 0
     }
-  }, "↩️"))))));
+  }, "↩️"))))),
+
+  manuellEintraege.length > 0 && /*#__PURE__*/React.createElement("div", {style:{marginTop:16}},
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",fontWeight:700,marginBottom:8}}, "📋 MANUELLE BUCHUNGEN"),
+    manuellEintraege.sort((a,b)=>(b.ts||0)-(a.ts||0)).map(e => /*#__PURE__*/React.createElement("div", {
+      key: e.id,
+      style: {display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,marginBottom:6,background:(e.betrag||0)>=0?"rgba(74,222,128,0.06)":"rgba(248,113,113,0.06)",border:`1px solid ${(e.betrag||0)>=0?"#4ade8025":"#f8717125"}`}
+    },
+      /*#__PURE__*/React.createElement("div", {style:{flex:1}},
+        /*#__PURE__*/React.createElement("div", {style:{fontWeight:700,fontSize:13}}, (e.betrag||0)>=0?"💰 ":"🛍️ ", e.beschreibung),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#64748b"}}, e.datum, " · ", e.ersteller)
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{fontWeight:800,color:(e.betrag||0)>=0?"#4ade80":"#f87171",fontSize:14,marginRight:8}}, (e.betrag||0)>=0?"+":"", (e.betrag||0).toFixed(2), " €"),
+      isKasse && /*#__PURE__*/React.createElement("button", {
+        onClick: () => loescheEintrag(e.id),
+        style: {padding:"4px 8px",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",color:"#f87171",borderRadius:7,fontSize:11,cursor:"pointer"}
+      }, "🗑️")
+    ))
+  ))));
 }
 
 
