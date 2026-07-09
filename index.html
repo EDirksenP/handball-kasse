@@ -667,6 +667,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -709,7 +711,15 @@ function BenutzerTab({
     value: edit.position || "",
     onChange: e => setEdit(x => ({...x, position: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
-  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"), /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"), /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"), /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"), /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"), /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"), /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "💰 KATEGORIE BEITRAG"), /*#__PURE__*/React.createElement("select", {
+    value: edit.kategorie || "arbeiter",
+    onChange: e => setEdit(x => ({...x, kategorie: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }, /*#__PURE__*/React.createElement("option", {value:"arbeiter"}, "🏃 Arbeiter (5,00 €/Monat)"),
+    /*#__PURE__*/React.createElement("option", {value:"azubi"}, "🎓 Azubi / Schüler (2,50 €/Monat)")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -801,7 +811,7 @@ function BenutzerTab({
       fontWeight: 700,
       marginTop: 2
     }
-  }, "📅 Eventorganisation"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, "📅 Eventorganisation"), b.rolle === "kasse" && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#4ade80",fontWeight:700,marginTop:2}}, "💵 Kasse"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -1112,6 +1122,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -3026,6 +3038,380 @@ function SonstigesTab({
 }
 
 // ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
+// ── MANNSCHAFTSKASSE TAB ───────────────────────────────────
+function MannschaftsKasseTab({
+  benutzer,
+  spieler,
+  mannschaftskasse,
+  cu,
+  isKasse,
+  toast
+}) {
+  const {
+    useState: useS,
+    useEffect: useE
+  } = React;
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const PAYPAL = "https://www.paypal.me/HandballEMD";
+  const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+  const heute = new Date();
+  const [monat, setMonat] = useS(heute.getMonth());
+  const [jahr, setJahr] = useS(heute.getFullYear());
+  const [zeigeForm, setZeigeForm] = useS(false);
+  const [formMonat, setFormMonat] = useS(heute.getMonth());
+  const [formJahr, setFormJahr] = useS(heute.getFullYear());
+  const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaft && b.benutzername !== "admin.3hsg" && b.rolle !== "admin");
+  const periodenKey = `${formJahr}-${String(formMonat + 1).padStart(2, "0")}`;
+  const anzeigeKey = `${jahr}-${String(monat + 1).padStart(2, "0")}`;
+
+  // Find existing period entries
+  const periodeEintraege = mannschaftskasse.filter(e => e.periode === anzeigeKey && (e.mannschaft || "1. Herren") === meineMannschaft);
+
+  // Gesamtübersicht
+  const gesamtBezahlt = periodeEintraege.filter(e => e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
+  const gesamtOffen = periodeEintraege.filter(e => !e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
+  const erstellePeriode = async () => {
+    // Check if period already exists
+    const exists = mannschaftskasse.some(e => e.periode === periodenKey && (e.mannschaft || "1. Herren") === meineMannschaft);
+    if (exists) return toast("⚠️ Diese Periode existiert bereits!");
+    // Create entry for each player
+    for (const b of eigeneBenutzer) {
+      const betrag = b.kategorie === "azubi" ? 2.50 : 5.00;
+      await col("mannschaftskasse").add({
+        periode: periodenKey,
+        mannschaft: meineMannschaft,
+        benutzerId: b.id,
+        name: b.vorname + " " + b.nachname,
+        kategorie: b.kategorie || "arbeiter",
+        betrag,
+        bezahlt: false,
+        bezahltAm: null,
+        bezahltVon: null,
+        ts: Date.now()
+      });
+    }
+    setZeigeForm(false);
+    setMonat(formMonat);
+    setJahr(formJahr);
+    toast(`✅ Periode ${MONATE[formMonat]} ${formJahr} erstellt!`);
+  };
+  const bestaetigen = async e => {
+    await ref("mannschaftskasse", e.id).update({
+      bezahlt: true,
+      bezahltAm: new Date().toLocaleDateString("de-DE"),
+      bezahltVon: cu.vorname + " " + cu.nachname
+    });
+    toast(`✅ ${e.name} als bezahlt markiert!`);
+  };
+  const rueckgaengig = async e => {
+    await ref("mannschaftskasse", e.id).update({
+      bezahlt: false,
+      bezahltAm: null,
+      bezahltVon: null
+    });
+    toast("↩️ Zurückgesetzt");
+  };
+  const loeschen = async e => {
+    await ref("mannschaftskasse", e.id).delete();
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "💵 Mannschaftskasse — ", meineMannschaft), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 16,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: monat,
+    onChange: e => setMonat(parseInt(e.target.value)),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }, MONATE.map((m, i) => /*#__PURE__*/React.createElement("option", {
+    key: i,
+    value: i
+  }, m))), /*#__PURE__*/React.createElement("select", {
+    value: jahr,
+    onChange: e => setJahr(parseInt(e.target.value)),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }, [2024, 2025, 2026, 2027, 2028].map(y => /*#__PURE__*/React.createElement("option", {
+    key: y,
+    value: y
+  }, y)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(74,222,128,0.08)",
+      border: "1px solid #4ade8030",
+      borderRadius: 12,
+      padding: 14,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#4ade80",
+      fontWeight: 700
+    }
+  }, "✅ BEZAHLT"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900,
+      color: "#4ade80",
+      marginTop: 4
+    }
+  }, gesamtBezahlt.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(248,113,113,0.08)",
+      border: "1px solid #f8717130",
+      borderRadius: 12,
+      padding: 14,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#f87171",
+      fontWeight: 700
+    }
+  }, "⏳ OFFEN"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900,
+      color: "#f87171",
+      marginTop: 4
+    }
+  }, gesamtOffen.toFixed(2), " €"))), isKasse && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, !zeigeForm ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(true),
+    style: {
+      width: "100%",
+      padding: "11px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 13,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "➕ Neue Periode anlegen") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(34,136,255,0.06)",
+      border: "1px solid #2288FF33",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 10
+    }
+  }, "➕ Periode anlegen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: formMonat,
+    onChange: e => setFormMonat(parseInt(e.target.value)),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 2
+    }
+  }, MONATE.map((m, i) => /*#__PURE__*/React.createElement("option", {
+    key: i,
+    value: i
+  }, m))), /*#__PURE__*/React.createElement("select", {
+    value: formJahr,
+    onChange: e => setFormJahr(parseInt(e.target.value)),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }, [2024, 2025, 2026, 2027, 2028].map(y => /*#__PURE__*/React.createElement("option", {
+    key: y,
+    value: y
+  }, y)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginBottom: 10
+    }
+  }, "🏃 Arbeiter: 5,00 € · 🎓 Azubi/Schüler: 2,50 € · Zahlung per PayPal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: erstellePeriode,
+    style: {
+      flex: 1,
+      padding: "11px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 13,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "✅ Erstellen (", eigeneBenutzer.length, " Spieler)"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(false),
+    style: {
+      padding: "11px 14px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 12,
+      cursor: "pointer"
+    }
+  }, "✕")))), periodeEintraege.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "30px 0"
+    }
+  }, "💵 Keine Einträge für ", MONATE[monat], " ", jahr) : /*#__PURE__*/React.createElement(React.Fragment, null, periodeEintraege.filter(e => !e.bezahlt).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#f87171",
+      fontWeight: 700,
+      marginBottom: 8
+    }
+  }, "⏳ NOCH NICHT BEZAHLT"), periodeEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 6,
+      background: "rgba(248,113,113,0.06)",
+      border: "1px solid #f8717125"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, e.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8"
+    }
+  }, e.kategorie === "azubi" ? "🎓 Azubi/Schüler" : "🏃 Arbeiter", " · ", e.betrag.toFixed(2), " €", " · ", /*#__PURE__*/React.createElement("a", {
+    href: PAYPAL,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      color: "#60a5fa",
+      textDecoration: "underline"
+    }
+  }, "PayPal"))), isKasse && /*#__PURE__*/React.createElement("button", {
+    onClick: () => bestaetigen(e),
+    style: {
+      padding: "6px 12px",
+      background: "rgba(74,222,128,0.15)",
+      border: "1px solid #4ade80",
+      color: "#4ade80",
+      borderRadius: 8,
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "✓ Bezahlt")))), periodeEintraege.filter(e => e.bezahlt).length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#4ade80",
+      fontWeight: 700,
+      marginBottom: 8
+    }
+  }, "✅ BEZAHLT"), periodeEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+    key: e.id,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      marginBottom: 6,
+      background: "rgba(74,222,128,0.06)",
+      border: "1px solid #4ade8025"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, e.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, e.kategorie === "azubi" ? "🎓 Azubi/Schüler" : "🏃 Arbeiter", " · ", e.betrag.toFixed(2), " € · bezahlt am ", e.bezahltAm)), isKasse && /*#__PURE__*/React.createElement("button", {
+    onClick: () => rueckgaengig(e),
+    style: {
+      padding: "5px 9px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#64748b",
+      borderRadius: 8,
+      fontSize: 11,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "↩️"))))));
+}
+
+
 function SchwarzeBrettVerwaltung({
   schwarzesBrett,
   cu,
@@ -3221,9 +3607,11 @@ function MainApp({
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
   const [schwarzesBrett, setSchwarzBrett] = useState([]);
+  const [mannschaftskasse, setMannschaftskasse] = useState([]);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const isEventorga = cu.rolle === "eventorga" || isAdmin;
+  const isKasse = cu.rolle === "kasse" || isAdmin;
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -3266,7 +3654,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 8) setLoading(false);
+      if (n >= 9) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -3328,6 +3716,10 @@ function MainApp({
       })).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
       done();
     });
+    const u9 = col("mannschaftskasse").onSnapshot(s => {
+      setMannschaftskasse(s.docs.map(d => ({id: d.id, ...d.data()})));
+      done();
+    });
     return () => {
       u1();
       u2();
@@ -3337,6 +3729,7 @@ function MainApp({
       u6();
       u7();
       u8();
+      u9();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
@@ -3471,7 +3864,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -3539,7 +3932,7 @@ function MainApp({
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : cu.rolle === "kasse" ? "💵" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
       border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
@@ -5776,7 +6169,14 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
+  }), tab === "kasse" && isKasse && /*#__PURE__*/React.createElement(MannschaftsKasseTab, {
+        benutzer: benutzer,
+        spieler: spieler,
+        mannschaftskasse: mannschaftskasse,
+        cu: cu,
+        isKasse: isKasse,
+        toast: toast
+      }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
     }
@@ -6557,6 +6957,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -6599,7 +7001,15 @@ function BenutzerTab({
     value: edit.position || "",
     onChange: e => setEdit(x => ({...x, position: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
-  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"), /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"), /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"), /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"), /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"), /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"), /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "💰 KATEGORIE BEITRAG"), /*#__PURE__*/React.createElement("select", {
+    value: edit.kategorie || "arbeiter",
+    onChange: e => setEdit(x => ({...x, kategorie: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }, /*#__PURE__*/React.createElement("option", {value:"arbeiter"}, "🏃 Arbeiter (5,00 €/Monat)"),
+    /*#__PURE__*/React.createElement("option", {value:"azubi"}, "🎓 Azubi / Schüler (2,50 €/Monat)")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -6693,7 +7103,7 @@ function BenutzerTab({
       fontWeight: 700,
       marginTop: 2
     }
-  }, "📅 Eventorganisation"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, "📅 Eventorganisation"), b.rolle === "kasse" && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#4ade80",fontWeight:700,marginTop:2}}, "💵 Kasse"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -7002,6 +7412,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -9111,9 +9523,11 @@ function MainApp({
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
   const [schwarzesBrett, setSchwarzBrett] = useState([]);
+  const [mannschaftskasse, setMannschaftskasse] = useState([]);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const isEventorga = cu.rolle === "eventorga" || isAdmin;
+  const isKasse = cu.rolle === "kasse" || isAdmin;
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -9156,7 +9570,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 8) setLoading(false);
+      if (n >= 9) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -9218,6 +9632,10 @@ function MainApp({
       })).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
       done();
     });
+    const u9 = col("mannschaftskasse").onSnapshot(s => {
+      setMannschaftskasse(s.docs.map(d => ({id: d.id, ...d.data()})));
+      done();
+    });
     return () => {
       u1();
       u2();
@@ -9227,6 +9645,7 @@ function MainApp({
       u6();
       u7();
       u8();
+      u9();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
@@ -9361,7 +9780,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -9429,7 +9848,7 @@ function MainApp({
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : cu.rolle === "kasse" ? "💵" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
       border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
@@ -11666,7 +12085,14 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
+  }), tab === "kasse" && isKasse && /*#__PURE__*/React.createElement(MannschaftsKasseTab, {
+        benutzer: benutzer,
+        spieler: spieler,
+        mannschaftskasse: mannschaftskasse,
+        cu: cu,
+        isKasse: isKasse,
+        toast: toast
+      }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
     }
