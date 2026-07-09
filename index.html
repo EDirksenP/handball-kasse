@@ -3047,6 +3047,38 @@ function MannschaftsKasseTab({
     await ref("mannschaftskasse", id).delete();
     toast("🗑️ Gelöscht");
   };
+  const SectionHeader = ({
+    label,
+    color,
+    open,
+    setOpen
+  }) => /*#__PURE__*/React.createElement("button", {
+    onClick: () => setOpen(v => !v),
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      padding: "0 0 8px 0",
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: color,
+      fontWeight: 700
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: color,
+      transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+      transition: "transform 0.2s"
+    }
+  }, "▼"));
   return /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
@@ -3245,7 +3277,7 @@ function MannschaftsKasseTab({
       color: "#94a3b8",
       marginBottom: 10
     }
-  }, "🏃 Arbeiter: 5,00 € · 🎓 Azubi/Schüler: 2,50 € · Zahlung per PayPal"), /*#__PURE__*/React.createElement("div", {
+  }, "🏃 Arbeiter: 5,00 € · 🎓 Azubi/Schüler: 2,50 €"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -3390,17 +3422,12 @@ function MannschaftsKasseTab({
     style: {
       marginBottom: 14
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#f87171",
-      fontWeight: 700,
-      marginBottom: 8,
-      display:"flex",
-      alignItems:"center",
-      justifyContent:"space-between"
-    }
-  }, "⏳ NOCH NICHT BEZAHLT"), /*#__PURE__*/React.createElement("button", {onClick:()=>setOffenOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#f87171",fontSize:13,transform:offenOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), offenOffen && beitragsEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(SectionHeader, {
+    label: `⏳ NOCH NICHT BEZAHLT (${beitragsEintraege.filter(e => !e.bezahlt).length})`,
+    color: "#f87171",
+    open: offenOffen,
+    setOpen: setOffenOffen
+  }), offenOffen && beitragsEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
@@ -3451,17 +3478,12 @@ function MannschaftsKasseTab({
     style: {
       marginBottom: 14
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#4ade80",
-      fontWeight: 700,
-      marginBottom: 8,
-      display:"flex",
-      alignItems:"center",
-      justifyContent:"space-between"
-    }
-  }, "✅ BEITRÄGE BEZAHLT"), /*#__PURE__*/React.createElement("button", {onClick:()=>setBezahltOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#4ade80",fontSize:13,transform:bezahltOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), bezahltOffen && beitragsEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(SectionHeader, {
+    label: `✅ BEITRÄGE BEZAHLT (${beitragsEintraege.filter(e => e.bezahlt).length})`,
+    color: "#4ade80",
+    open: bezahltOffen,
+    setOpen: setBezahltOffen
+  }), bezahltOffen && beitragsEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
@@ -3499,17 +3521,12 @@ function MannschaftsKasseTab({
       cursor: "pointer",
       flexShrink: 0
     }
-  }, "↩️")))), manuellEintraege.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8",
-      fontWeight: 700,
-      marginBottom: 8,
-      display:"flex",
-      alignItems:"center",
-      justifyContent:"space-between"
-    }
-  }, "📋 MANUELLE BUCHUNGEN"), /*#__PURE__*/React.createElement("button", {onClick:()=>setManuellOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:13,transform:manuellOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), manuellOffen && manuellEintraege.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, "↩️")))), manuellEintraege.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
+    label: `📋 MANUELLE BUCHUNGEN (${manuellEintraege.length})`,
+    color: "#94a3b8",
+    open: manuellOffen,
+    setOpen: setManuellOffen
+  }), manuellOffen && manuellEintraege.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
