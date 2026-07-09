@@ -2966,6 +2966,9 @@ function MannschaftsKasseTab({
     betrag: "",
     typ: "ausgabe"
   });
+  const [offenOffen, setOffenOffen] = useState(true);
+  const [bezahltOffen, setBezahltOffen] = useState(true);
+  const [manuellOffen, setManuellOffen] = useState(true);
   const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaft && b.benutzername !== "admin.3hsg" && b.rolle !== "admin");
   const anzeigeKey = `${jahr}-${String(monat + 1).padStart(2, "0")}`;
   const periodenKey = `${formJahr}-${String(formMonat + 1).padStart(2, "0")}`;
@@ -3392,9 +3395,12 @@ function MannschaftsKasseTab({
       fontSize: 11,
       color: "#f87171",
       fontWeight: 700,
-      marginBottom: 8
+      marginBottom: 8,
+      display:"flex",
+      alignItems:"center",
+      justifyContent:"space-between"
     }
-  }, "⏳ NOCH NICHT BEZAHLT"), beitragsEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, "⏳ NOCH NICHT BEZAHLT"), /*#__PURE__*/React.createElement("button", {onClick:()=>setOffenOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#f87171",fontSize:13,transform:offenOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), offenOffen && beitragsEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
@@ -3450,9 +3456,12 @@ function MannschaftsKasseTab({
       fontSize: 11,
       color: "#4ade80",
       fontWeight: 700,
-      marginBottom: 8
+      marginBottom: 8,
+      display:"flex",
+      alignItems:"center",
+      justifyContent:"space-between"
     }
-  }, "✅ BEITRÄGE BEZAHLT"), beitragsEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, "✅ BEITRÄGE BEZAHLT"), /*#__PURE__*/React.createElement("button", {onClick:()=>setBezahltOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#4ade80",fontSize:13,transform:bezahltOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), bezahltOffen && beitragsEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
@@ -3495,9 +3504,12 @@ function MannschaftsKasseTab({
       fontSize: 11,
       color: "#94a3b8",
       fontWeight: 700,
-      marginBottom: 8
+      marginBottom: 8,
+      display:"flex",
+      alignItems:"center",
+      justifyContent:"space-between"
     }
-  }, "📋 MANUELLE BUCHUNGEN"), manuellEintraege.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
+  }, "📋 MANUELLE BUCHUNGEN"), /*#__PURE__*/React.createElement("button", {onClick:()=>setManuellOffen(v=>!v), style:{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:13,transform:manuellOffen?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s",padding:0}}, "▼")), manuellOffen && manuellEintraege.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
     key: e.id,
     style: {
       display: "flex",
