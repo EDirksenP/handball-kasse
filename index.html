@@ -411,6 +411,7 @@ function BenutzerTab({
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
+  const [eingeklappt, setEingeklappt] = useState({});
   const [gutVal, setGutVal] = useState("");
   const bn = (v, n) => mkU(v, n);
   const sicherungErstellen = () => {
@@ -475,6 +476,28 @@ function BenutzerTab({
     await ref("benutzer", id).delete();
     toast("🗑️ Gelöscht");
   };
+  const [pdfMannschaft, setPdfMannschaft] = useState("3. Herren");
+
+  const erstelleMitgliederliste = () => {
+    const mitglieder = benutzer
+      .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.benutzername !== "admin.3hsg")
+      .sort((a,b) => (a.trikotnummer?parseInt(a.trikotnummer):999) - (b.trikotnummer?parseInt(b.trikotnummer):999) || a.nachname.localeCompare(b.nachname));
+    if(mitglieder.length===0) return toast("⚠️ Keine Mitglieder!");
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
+<style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:24px}.header h1{color:#003F8A;font-size:22px;margin:0 0 6px 0}.header h2{color:#333;font-size:16px;margin:0;font-weight:normal}.meta{font-size:12px;color:#666;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#003F8A;color:white;padding:10px 14px;text-align:left;font-size:13px}td{padding:9px 14px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:30px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:12px}</style>
+</head><body>
+<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft}</h2>
+<div class="meta">Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</div></div>
+<table><thead><tr><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th></tr></thead>
+<tbody>${mitglieder.map(b=>`<tr><td><strong>${b.trikotnummer||""}</strong></td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position||""}</td><td><strong>${b.handballId||""}</strong></td></tr>`).join("")}</tbody></table>
+<div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
+</body></html>`;
+    const win = window.open("","_blank");
+    win.document.write(html);
+    win.document.close();
+    setTimeout(()=>win.print(),500);
+  };
+
   const saveEdit = async () => {
     if (!edit.vorname.trim() || !edit.nachname.trim()) return;
     await ref("benutzer", edit.id).set({
@@ -487,6 +510,8 @@ function BenutzerTab({
       guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
       handballId: edit.handballId || "",
+      trikotnummer: edit.trikotnummer || "",
+      position: edit.position || "",
       kategorie: edit.kategorie || "arbeiter"
     });
     setEdit(null);
@@ -629,7 +654,24 @@ function BenutzerTab({
     value: edit.handballId || "",
     onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "👕 TRIKOTNUMMER (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "number", placeholder: "z.B. 7",
+    value: edit.trikotnummer || "",
+    onChange: e => setEdit(x => ({...x, trikotnummer: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "⚽ POSITION"), /*#__PURE__*/React.createElement("select", {
+    value: edit.position || "",
+    onChange: e => setEdit(x => ({...x, position: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"),
+    /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"),
+    /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"),
+    /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -701,7 +743,7 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#f472b6",
@@ -818,7 +860,21 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement("div", {
+    style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:8}}, "📋 Mitgliederliste als PDF"),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine druckbare Liste mit Trikotnummer, Position und Handball-ID."),
+    /*#__PURE__*/React.createElement("select", {
+      value: pdfMannschaft,
+      onChange: e => setPdfMannschaft(e.target.value),
+      style: {...IS, marginTop:0, marginBottom:10}
+    }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {key:m, value:m}, m))),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: erstelleMitgliederliste,
+      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}
+    }, "📄 Mitgliederliste erstellen")
+  ), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
     schwarzesBrett: schwarzesBrett || [],
     cu: cu,
     toast: toast
@@ -1063,26 +1119,27 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#2288FF",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8
-    }
-  }, "👑 ADMINS"), admins.map(b => card(b))), gruppen.map(g => /*#__PURE__*/React.createElement("div", {
-    key: g.name
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8,
-      marginTop: 14
-    }
-  }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
+  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, admins: !x.admins})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0",marginBottom:4}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#2288FF",fontWeight:700,letterSpacing:1}}, "👑 ADMINS (", admins.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#2288FF",transform:eingeklappt.admins?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt.admins && admins.map(b => card(b))
+    ),
+    gruppen.map(g => /*#__PURE__*/React.createElement("div", {key: g.name, style:{marginTop:14}},
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, [g.name]: !x[g.name]})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0"}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1}}, "🤾 ", g.name.toUpperCase(), " (", g.list.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt[g.name]?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt[g.name] && g.list.map(b => card(b))
+    ))));
 }
 
 // ── STRAFENKATALOG ───────────────────────────────────────────
@@ -2153,7 +2210,9 @@ function TermineTab({
           return {
             vorname: bu?.vorname || name.split(" ")[0],
             nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
-            handballId: bu?.handballId || "—",
+            trikotnummer: bu?.trikotnummer || "",
+            position: bu?.position || "",
+            handballId: bu?.handballId || "",
             status: zusagen.includes(name) ? "✅" : "❓"
           };
         });
@@ -2201,19 +2260,21 @@ function TermineTab({
 <table>
   <thead>
     <tr>
-      <th>#</th>
+      <th>Trikot</th>
       <th>Vorname</th>
       <th>Nachname</th>
+      <th>Position</th>
       <th>Handball-ID</th>
       <th>Status</th>
     </tr>
   </thead>
   <tbody>
-    ${spielerMitId.map((sp, i) => `
+    ${[...spielerMitId].sort((a,b)=>{const na=parseInt(a.trikotnummer)||999;const nb=parseInt(b.trikotnummer)||999;return na-nb;}).map((sp) => `
     <tr>
-      <td>${i + 1}</td>
+      <td><strong>${sp.trikotnummer}</strong></td>
       <td>${sp.vorname}</td>
       <td>${sp.nachname}</td>
+      <td>${sp.position}</td>
       <td><strong>${sp.handballId}</strong></td>
       <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
     </tr>`).join("")}
