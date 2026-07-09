@@ -411,6 +411,7 @@ function BenutzerTab({
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
+  const [eingeklappt, setEingeklappt] = useState({});
   const [gutVal, setGutVal] = useState("");
   const bn = (v, n) => mkU(v, n);
   const sicherungErstellen = () => {
@@ -1074,26 +1075,27 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#2288FF",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8
-    }
-  }, "👑 ADMINS"), admins.map(b => card(b))), gruppen.map(g => /*#__PURE__*/React.createElement("div", {
-    key: g.name
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8,
-      marginTop: 14
-    }
-  }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
+  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, admins: !x.admins})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0",marginBottom:4}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#2288FF",fontWeight:700,letterSpacing:1}}, "👑 ADMINS (", admins.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt.admins?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt.admins && admins.map(b => card(b))
+    ),
+    gruppen.map(g => /*#__PURE__*/React.createElement("div", {key: g.name, style:{marginTop:14}},
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, [g.name]: !x[g.name]})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0"}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1}}, "🤾 ", g.name.toUpperCase(), " (", g.list.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt[g.name]?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt[g.name] && g.list.map(b => card(b))
+    ))));
 }
 
 // ── STRAFENKATALOG ───────────────────────────────────────────
@@ -6297,6 +6299,7 @@ function BenutzerTab({
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
+  const [eingeklappt, setEingeklappt] = useState({});
   const [gutVal, setGutVal] = useState("");
   const bn = (v, n) => mkU(v, n);
   const sicherungErstellen = () => {
@@ -6962,26 +6965,27 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#2288FF",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8
-    }
-  }, "👑 ADMINS"), admins.map(b => card(b))), gruppen.map(g => /*#__PURE__*/React.createElement("div", {
-    key: g.name
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8",
-      fontWeight: 700,
-      letterSpacing: 1,
-      marginBottom: 8,
-      marginTop: 14
-    }
-  }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
+  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, admins: !x.admins})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0",marginBottom:4}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#2288FF",fontWeight:700,letterSpacing:1}}, "👑 ADMINS (", admins.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt.admins?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt.admins && admins.map(b => card(b))
+    ),
+    gruppen.map(g => /*#__PURE__*/React.createElement("div", {key: g.name, style:{marginTop:14}},
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setEingeklappt(x => ({...x, [g.name]: !x[g.name]})),
+        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0"}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1}}, "🤾 ", g.name.toUpperCase(), " (", g.list.length, ")"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt[g.name]?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
+      ),
+      !eingeklappt[g.name] && g.list.map(b => card(b))
+    ))));
 }
 
 // ── STRAFENKATALOG ───────────────────────────────────────────
