@@ -480,7 +480,7 @@ function BenutzerTab({
 
   const erstelleMitgliederliste = () => {
     const mitglieder = benutzer
-      .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.rolle !== "admin")
+      .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.benutzername !== "admin.3hsg")
       .sort((a,b) => a.nachname.localeCompare(b.nachname));
     if(mitglieder.length === 0) return toast("⚠️ Keine Mitglieder in dieser Mannschaft!");
     const html = `<!DOCTYPE html>
