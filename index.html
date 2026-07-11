@@ -668,7 +668,8 @@ function BenutzerTab({
     onChange: e => setEdit(x => ({...x, position: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
   }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"),
-    /*#__PURE__*/React.createElement("option", {value:"Feldspieler"},"🏃 Feldspieler"),
+    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Fest)"},"🏃 Feldspieler (Fest)"),
+    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Springer)"},"🔄 Feldspieler (Springer)"),
     /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"),
     /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")
   ), /*#__PURE__*/React.createElement("div", {
@@ -743,7 +744,7 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":b.position==="Feldspieler (Springer)"?"🔄 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#f472b6",
