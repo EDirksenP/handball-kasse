@@ -2738,7 +2738,8 @@ function TermineTab({
 // ── SONSTIGES TAB ────────────────────────────────────────────
 function SonstigesTab({
   sonstiges,
-  toast
+  toast,
+  setQrModal
 }) {
   const [editSon, setEditSon] = useState(null);
   const [gSForm, setGSForm] = useState({
@@ -6393,7 +6394,8 @@ function MainApp({
     }
   }, "🗑️"))))), tab === "sonstiges" && /*#__PURE__*/React.createElement(SonstigesTab, {
     sonstiges: sonstiges,
-    toast: toast
+    toast: toast,
+    setQrModal: setQrModal
   }), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
     benutzer: benutzer,
     spieler: spieler,
