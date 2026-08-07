@@ -2947,6 +2947,10 @@ function SonstigesTab({
       fontWeight: 800
     }
   }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setQrModal(g),
+    title: "QR-Code anzeigen",
+    style: {background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}
+  }, "⬛"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEditSon(g),
     style: {
       background: "rgba(34,136,255,0.1)",
