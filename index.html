@@ -3779,15 +3779,19 @@ function MainApp({
     return params.get("buche") || null;
   });
   useEffect(() => {
-    if(vorgewaehlterArtikel && getraenke.length > 0) {
-      const g = getraenke.find(x => x.id === vorgewaehlterArtikel);
+    if(vorgewaehlterArtikel && (getraenke.length > 0 || sonstiges.length > 0)) {
+      const g = getraenke.find(x => x.id === vorgewaehlterArtikel) ||
+                sonstiges.find(x => x.id === vorgewaehlterArtikel);
       if(g) {
         setTab("buchen");
-        // Clear URL param without reload
+        if(sonstiges.find(x => x.id === vorgewaehlterArtikel)) setBuchKat("sonstiges");
+        else setBuchKat("getraenk");
+        const meinSp = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
+        if(meinSp) setGwS(meinSp.id);
         window.history.replaceState({}, "", window.location.pathname);
       }
     }
-  }, [vorgewaehlterArtikel, getraenke]);
+  }, [vorgewaehlterArtikel, getraenke, sonstiges, spieler]);
   const [toastMsg, setToastMsg] = useState(null);
   const [gwS, setGwS] = useState(null);
   const [datum, setDatum] = useState(todayStr());
@@ -4860,7 +4864,7 @@ function MainApp({
     }
   }, vorgewaehlterArtikel && /*#__PURE__*/React.createElement("div", {
     style: {background:"rgba(167,139,250,0.12)",border:"1px solid #a78bfa44",borderRadius:10,padding:"10px 12px",marginBottom:12,fontSize:13,color:"#c4b5fd",fontWeight:600}
-  }, "📲 QR-Code erkannt: ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).emoji||"", " ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).name||"", " — Spieler wählen, dann Artikel antippen!"),
+  }, "📲 QR-Code erkannt: ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).emoji||"", " ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).name||"", " — Spieler antippen → wird sofort gebucht!"),
   /*#__PURE__*/React.createElement("span", null, "📅"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
@@ -4987,7 +4991,27 @@ function MainApp({
       const g = bu?.guthaben || 0;
       return /*#__PURE__*/React.createElement("button", {
         key: sp.id,
-        onClick: () => setGwS(gwS === sp.id ? null : sp.id),
+        onClick: async () => {
+            if(vorgewaehlterArtikel && gwS !== sp.id) {
+              // Auto-book: select player and immediately book the pre-selected article
+              const g = getraenke.find(x => x.id === vorgewaehlterArtikel);
+              if(g) {
+                setGwS(sp.id);
+                const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
+                if(zahlart === "guthaben") {
+                  const gut2 = bu?.guthaben || 0;
+                  if(!bu) return toast("⚠️ Kein Benutzer gefunden!");
+                  if(gut2 < g.preis) return toast("⚠️ Guthaben reicht nicht!");
+                  await ref("benutzer", bu.id).update({guthaben: gut2 - g.preis});
+                }
+                await col("eintraege").add({typ:"getraenk", betrag:g.preis, beschreibung:g.name, getraenkEmoji:g.emoji, person:sp.name, spielerId:sp.id, datum:fmtD(datum), datumRaw:datum, zeit:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}), gebuchtvon:cu.benutzername, zahlart, ts:Date.now()});
+                toast("✅ " + g.emoji + " " + g.name + " für " + sp.name + " gebucht!");
+                setVorgewaehlterArtikel(null);
+                return;
+              }
+            }
+            setGwS(gwS === sp.id ? null : sp.id);
+          },
         style: {
           display: "flex",
           alignItems: "center",
@@ -5148,8 +5172,8 @@ function MainApp({
         padding: "14px 10px",
         borderRadius: 14,
         cursor: "pointer",
-        border: `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
-        background: gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
+        border: vorgewaehlterArtikel === g.id ? "3px solid #fbbf24" : `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
+        background: vorgewaehlterArtikel === g.id ? "rgba(251,191,36,0.15)" : gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
         color: gwS && !nok ? "#e2e8f0" : "#475569",
         display: "flex",
         flexDirection: "column",
