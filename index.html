@@ -4367,7 +4367,7 @@ function MainApp({
       /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#f87171",fontWeight:700,marginTop:8,textAlign:"right"}},
         "Gesamt offen: ", meineOffenenStrafen.reduce((s,e)=>s+(e.betrag||0),0).toFixed(2), " €"
       )
-    : null, naechsterTermin ? /*#__PURE__*/React.createElement("div", {
+    ) : null, naechsterTermin ? /*#__PURE__*/React.createElement("div", {
       style: {
         background: `${typInfoNT.color}12`,
         border: `1px solid ${typInfoNT.color}40`,
