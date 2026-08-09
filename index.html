@@ -15,10 +15,8 @@
     input[type=date]{color-scheme:dark;}
     ::-webkit-scrollbar{width:4px;}
     ::-webkit-scrollbar-thumb{background:#003070;border-radius:2px;}
-    .nav-scroll::-webkit-scrollbar{display:none;}
     @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -43,8 +41,40 @@ const col = n => window.db.collection(n);
 const ref = (n, id) => window.db.collection(n).doc(id);
 const AUTH_KEY = "hsg_auth_v3";
 const MANNSCHAFTEN = ["1. Herren", "2. Herren", "3. Herren", "1. Damen", "2. Damen", "3. Damen"];
-const GETRAENKE_DEFAULT = [];
-const SONSTIGES_DEFAULT = [];
+const GETRAENKE_DEFAULT = [{
+  name: "Cola",
+  preis: 1.00,
+  emoji: "🥤"
+}, {
+  name: "Wasser",
+  preis: 0.50,
+  emoji: "💧"
+}, {
+  name: "Fanta",
+  preis: 1.00,
+  emoji: "🍊"
+}, {
+  name: "Bier",
+  preis: 1.50,
+  emoji: "🍺"
+}, {
+  name: "Kaffee",
+  preis: 0.80,
+  emoji: "☕"
+}, {
+  name: "Iso",
+  preis: 1.20,
+  emoji: "⚡"
+}];
+const SONSTIGES_DEFAULT = [{
+  name: "Bratwurst",
+  preis: 2.00,
+  emoji: "🌭"
+}, {
+  name: "Zigaretten",
+  preis: 0.50,
+  emoji: "🚬"
+}];
 const STRAFEN_DEFAULT = [];
 const TERMIN_TYPEN = {
   training: {
@@ -369,7 +399,6 @@ function BenutzerTab({
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
-  const [eingeklappt, setEingeklappt] = useState({});
   const [gutVal, setGutVal] = useState("");
   const bn = (v, n) => mkU(v, n);
   const sicherungErstellen = () => {
@@ -434,28 +463,6 @@ function BenutzerTab({
     await ref("benutzer", id).delete();
     toast("🗑️ Gelöscht");
   };
-  const [pdfMannschaft, setPdfMannschaft] = useState("3. Herren");
-
-  const erstelleMitgliederliste = () => {
-    const mitglieder = benutzer
-      .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.benutzername !== "admin.3hsg")
-      .sort((a,b) => (a.trikotnummer?parseInt(a.trikotnummer):999) - (b.trikotnummer?parseInt(b.trikotnummer):999) || a.nachname.localeCompare(b.nachname));
-    if(mitglieder.length===0) return toast("⚠️ Keine Mitglieder!");
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
-<style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:24px}.header h1{color:#003F8A;font-size:22px;margin:0 0 6px 0}.header h2{color:#333;font-size:16px;margin:0;font-weight:normal}.meta{font-size:12px;color:#666;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#003F8A;color:white;padding:10px 14px;text-align:left;font-size:13px}td{padding:9px 14px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:30px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:12px}</style>
-</head><body>
-<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft}</h2>
-<div class="meta">Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</div></div>
-<table><thead><tr><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th></tr></thead>
-<tbody>${mitglieder.map(b=>`<tr><td><strong>${b.trikotnummer||""}</strong></td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position||""}</td><td><strong>${b.handballId||""}</strong></td></tr>`).join("")}</tbody></table>
-<div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
-</body></html>`;
-    const win = window.open("","_blank");
-    win.document.write(html);
-    win.document.close();
-    setTimeout(()=>win.print(),500);
-  };
-
   const saveEdit = async () => {
     if (!edit.vorname.trim() || !edit.nachname.trim()) return;
     await ref("benutzer", edit.id).set({
@@ -467,10 +474,7 @@ function BenutzerTab({
       mannschaft: edit.mannschaft || "1. Herren",
       guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
-      handballId: edit.handballId || "",
-      trikotnummer: edit.trikotnummer || "",
-      position: edit.position || "",
-      kategorie: edit.kategorie || "arbeiter"
+      handballId: edit.handballId || ""
     });
     setEdit(null);
     toast("✅ Gespeichert");
@@ -582,8 +586,6 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
-    value: "kasse"
-  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -612,25 +614,7 @@ function BenutzerTab({
     value: edit.handballId || "",
     onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
-  }), /*#__PURE__*/React.createElement("label", {
-    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
-  }, "👕 TRIKOTNUMMER (optional)"), /*#__PURE__*/React.createElement("input", {
-    type: "number", placeholder: "z.B. 7",
-    value: edit.trikotnummer || "",
-    onChange: e => setEdit(x => ({...x, trikotnummer: e.target.value})),
-    style: {...IS, marginTop:4, marginBottom:10}
-  }), /*#__PURE__*/React.createElement("label", {
-    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
-  }, "⚽ POSITION"), /*#__PURE__*/React.createElement("select", {
-    value: edit.position || "",
-    onChange: e => setEdit(x => ({...x, position: e.target.value})),
-    style: {...IS, marginTop:4, marginBottom:10}
-  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"),
-    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Fest)"},"🏃 Feldspieler (Fest)"),
-    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Springer)"},"🔄 Feldspieler (Springer)"),
-    /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"),
-    /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")
-  ), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -702,7 +686,7 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":b.position==="Feldspieler (Springer)"?"🔄 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.geburtstag && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#f472b6",
@@ -819,21 +803,7 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement("div", {
-    style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
-  },
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:8}}, "📋 Mitgliederliste als PDF"),
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine druckbare Liste mit Trikotnummer, Position und Handball-ID."),
-    /*#__PURE__*/React.createElement("select", {
-      value: pdfMannschaft,
-      onChange: e => setPdfMannschaft(e.target.value),
-      style: {...IS, marginTop:0, marginBottom:10}
-    }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {key:m, value:m}, m))),
-    /*#__PURE__*/React.createElement("button", {
-      onClick: erstelleMitgliederliste,
-      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}
-    }, "📄 Mitgliederliste erstellen")
-  ), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
     schwarzesBrett: schwarzesBrett || [],
     cu: cu,
     toast: toast
@@ -1045,8 +1015,6 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
-    value: "kasse"
-  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -1078,27 +1046,26 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null,
-    /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("button", {
-        onClick: () => setEingeklappt(x => ({...x, admins: !x.admins})),
-        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0",marginBottom:4}
-      },
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#2288FF",fontWeight:700,letterSpacing:1}}, "👑 ADMINS (", admins.length, ")"),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#2288FF",transform:eingeklappt.admins?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
-      ),
-      !eingeklappt.admins && admins.map(b => card(b))
-    ),
-    gruppen.map(g => /*#__PURE__*/React.createElement("div", {key: g.name, style:{marginTop:14}},
-      /*#__PURE__*/React.createElement("button", {
-        onClick: () => setEingeklappt(x => ({...x, [g.name]: !x[g.name]})),
-        style: {width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px 0"}
-      },
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:1}}, "🤾 ", g.name.toUpperCase(), " (", g.list.length, ")"),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",transform:eingeklappt[g.name]?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}, "▼")
-      ),
-      !eingeklappt[g.name] && g.list.map(b => card(b))
-    ))));
+  }, "✅ Benutzer anlegen")), admins.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#2288FF",
+      fontWeight: 700,
+      letterSpacing: 1,
+      marginBottom: 8
+    }
+  }, "👑 ADMINS"), admins.map(b => card(b))), gruppen.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g.name
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      marginBottom: 8,
+      marginTop: 14
+    }
+  }, "🤾 ", g.name.toUpperCase()), g.list.map(b => card(b)))));
 }
 
 // ── STRAFENKATALOG ───────────────────────────────────────────
@@ -2169,9 +2136,7 @@ function TermineTab({
           return {
             vorname: bu?.vorname || name.split(" ")[0],
             nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
-            trikotnummer: bu?.trikotnummer || "",
-            position: bu?.position || "",
-            handballId: bu?.handballId || "",
+            handballId: bu?.handballId || "—",
             status: zusagen.includes(name) ? "✅" : "❓"
           };
         });
@@ -2219,21 +2184,19 @@ function TermineTab({
 <table>
   <thead>
     <tr>
-      <th>Trikot</th>
+      <th>#</th>
       <th>Vorname</th>
       <th>Nachname</th>
-      <th>Position</th>
       <th>Handball-ID</th>
       <th>Status</th>
     </tr>
   </thead>
   <tbody>
-    ${[...spielerMitId].sort((a,b)=>{const na=parseInt(a.trikotnummer)||999;const nb=parseInt(b.trikotnummer)||999;return na-nb;}).map((sp) => `
+    ${spielerMitId.map((sp, i) => `
     <tr>
-      <td><strong>${sp.trikotnummer}</strong></td>
+      <td>${i + 1}</td>
       <td>${sp.vorname}</td>
       <td>${sp.nachname}</td>
-      <td>${sp.position}</td>
       <td><strong>${sp.handballId}</strong></td>
       <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
     </tr>`).join("")}
@@ -2727,8 +2690,7 @@ function TermineTab({
 // ── SONSTIGES TAB ────────────────────────────────────────────
 function SonstigesTab({
   sonstiges,
-  toast,
-  setQrModal
+  toast
 }) {
   const [editSon, setEditSon] = useState(null);
   const [gSForm, setGSForm] = useState({
@@ -2937,10 +2899,6 @@ function SonstigesTab({
       fontWeight: 800
     }
   }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setQrModal(g),
-    title: "QR-Code anzeigen",
-    style: {background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}
-  }, "⬛"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEditSon(g),
     style: {
       background: "rgba(34,136,255,0.1)",
@@ -2966,639 +2924,6 @@ function SonstigesTab({
 }
 
 // ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
-
-// ── MANNSCHAFTSKASSE TAB ───────────────────────────────────
-function MannschaftsKasseTab({
-  benutzer,
-  spieler,
-  mannschaftskasse,
-  cu,
-  isKasse,
-  toast
-}) {
-  const meineMannschaft = cu.mannschaft || "1. Herren";
-  const PAYPAL = "https://www.paypal.me/HandballEMD";
-  const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-  const heute = new Date();
-  const [monat, setMonat] = useState(heute.getMonth());
-  const [jahr, setJahr] = useState(heute.getFullYear());
-  const [zeigeForm, setZeigeForm] = useState(false);
-  const [formMonat, setFormMonat] = useState(heute.getMonth());
-  const [formJahr, setFormJahr] = useState(heute.getFullYear());
-  const [zeigeManuell, setZeigeManuell] = useState(false);
-  const [manuellForm, setManuellForm] = useState({
-    beschreibung: "",
-    betrag: "",
-    typ: "ausgabe"
-  });
-  const [offenOffen, setOffenOffen] = useState(true);
-  const [bezahltOffen, setBezahltOffen] = useState(true);
-  const [manuellOffen, setManuellOffen] = useState(true);
-  const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaft && b.benutzername !== "admin.3hsg" && b.rolle !== "admin");
-  const anzeigeKey = `${jahr}-${String(monat + 1).padStart(2, "0")}`;
-  const periodenKey = `${formJahr}-${String(formMonat + 1).padStart(2, "0")}`;
-  const periodeEintraege = mannschaftskasse.filter(e => e.periode === anzeigeKey && (e.mannschaft || "1. Herren") === meineMannschaft);
-  const manuellEintraege = periodeEintraege.filter(e => e.manuell);
-  const beitragsEintraege = periodeEintraege.filter(e => !e.manuell);
-  const gesamtBezahlt = beitragsEintraege.filter(e => e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
-  const gesamtOffen = beitragsEintraege.filter(e => !e.bezahlt).reduce((s, e) => s + (e.betrag || 0), 0);
-  const gesamtAusgaben = manuellEintraege.filter(e => (e.betrag || 0) < 0).reduce((s, e) => s + (e.betrag || 0), 0);
-  const gesamtEinnahmen = manuellEintraege.filter(e => (e.betrag || 0) > 0).reduce((s, e) => s + (e.betrag || 0), 0);
-  const kassenstand = gesamtBezahlt + gesamtEinnahmen + gesamtAusgaben;
-  const erstellePeriode = async () => {
-    const exists = mannschaftskasse.some(e => e.periode === periodenKey && (e.mannschaft || "1. Herren") === meineMannschaft);
-    if (exists) return toast("⚠️ Diese Periode existiert bereits!");
-    for (const b of eigeneBenutzer) {
-      const betrag = b.kategorie === "azubi" ? 2.50 : 5.00;
-      await col("mannschaftskasse").add({
-        periode: periodenKey,
-        mannschaft: meineMannschaft,
-        benutzerId: b.id,
-        name: b.vorname + " " + b.nachname,
-        kategorie: b.kategorie || "arbeiter",
-        betrag,
-        bezahlt: false,
-        bezahltAm: null,
-        bezahltVon: null,
-        ts: Date.now()
-      });
-    }
-    setZeigeForm(false);
-    setMonat(formMonat);
-    setJahr(formJahr);
-    toast(`✅ Periode ${MONATE[formMonat]} ${formJahr} erstellt!`);
-  };
-  const speichereManuell = async () => {
-    const betrag = parseFloat(manuellForm.betrag.replace(",", "."));
-    if (!manuellForm.beschreibung.trim()) return toast("⚠️ Bitte eine Beschreibung eingeben!");
-    if (!betrag || betrag <= 0) return toast("⚠️ Bitte einen gültigen Betrag eingeben!");
-    await col("mannschaftskasse").add({
-      periode: anzeigeKey,
-      mannschaft: meineMannschaft,
-      typ: manuellForm.typ,
-      beschreibung: manuellForm.beschreibung.trim(),
-      betrag: manuellForm.typ === "ausgabe" ? -betrag : betrag,
-      bezahlt: true,
-      manuell: true,
-      ersteller: cu.vorname + " " + cu.nachname,
-      datum: new Date().toLocaleDateString("de-DE"),
-      ts: Date.now()
-    });
-    setManuellForm({
-      beschreibung: "",
-      betrag: "",
-      typ: "ausgabe"
-    });
-    setZeigeManuell(false);
-    toast(manuellForm.typ === "ausgabe" ? "✅ Ausgabe gespeichert!" : "✅ Einnahme gespeichert!");
-  };
-  const bestaetigen = async e => {
-    await ref("mannschaftskasse", e.id).update({
-      bezahlt: true,
-      bezahltAm: new Date().toLocaleDateString("de-DE"),
-      bezahltVon: cu.vorname + " " + cu.nachname
-    });
-    toast(`✅ ${e.name} als bezahlt markiert!`);
-  };
-  const rueckgaengig = async e => {
-    await ref("mannschaftskasse", e.id).update({
-      bezahlt: false,
-      bezahltAm: null,
-      bezahltVon: null
-    });
-    toast("↩️ Zurückgesetzt");
-  };
-  const loescheEintrag = async id => {
-    await ref("mannschaftskasse", id).delete();
-    toast("🗑️ Gelöscht");
-  };
-  const SectionHeader = ({
-    label,
-    color,
-    open,
-    setOpen
-  }) => /*#__PURE__*/React.createElement("button", {
-    onClick: () => setOpen(v => !v),
-    style: {
-      width: "100%",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background: "none",
-      border: "none",
-      cursor: "pointer",
-      padding: "0 0 8px 0",
-      marginBottom: 4
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: color,
-      fontWeight: 700
-    }
-  }, label), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: color,
-      transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-      transition: "transform 0.2s"
-    }
-  }, "▼"));
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 20
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "#94a3b8",
-      fontWeight: 700,
-      letterSpacing: 1,
-      textTransform: "uppercase",
-      marginBottom: 16
-    }
-  }, "💵 Mannschaftskasse — ", meineMannschaft), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("select", {
-    value: monat,
-    onChange: e => setMonat(parseInt(e.target.value)),
-    style: {
-      ...IS,
-      marginTop: 0,
-      flex: 2
-    }
-  }, MONATE.map((m, i) => /*#__PURE__*/React.createElement("option", {
-    key: i,
-    value: i
-  }, m))), /*#__PURE__*/React.createElement("select", {
-    value: jahr,
-    onChange: e => setJahr(parseInt(e.target.value)),
-    style: {
-      ...IS,
-      marginTop: 0,
-      flex: 1
-    }
-  }, [2024, 2025, 2026, 2027, 2028].map(y => /*#__PURE__*/React.createElement("option", {
-    key: y,
-    value: y
-  }, y)))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "rgba(74,222,128,0.08)",
-      border: "1px solid #4ade8030",
-      borderRadius: 12,
-      padding: 12,
-      textAlign: "center"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#4ade80",
-      fontWeight: 700
-    }
-  }, "✅ BEZAHLT"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: "#4ade80",
-      marginTop: 3
-    }
-  }, gesamtBezahlt.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "rgba(248,113,113,0.08)",
-      border: "1px solid #f8717130",
-      borderRadius: 12,
-      padding: 12,
-      textAlign: "center"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#f87171",
-      fontWeight: 700
-    }
-  }, "⏳ OFFEN"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 20,
-      fontWeight: 900,
-      color: "#f87171",
-      marginTop: 3
-    }
-  }, gesamtOffen.toFixed(2), " €"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "linear-gradient(135deg,#003F8A,#001F50)",
-      border: "2px solid #0055AA",
-      borderRadius: 12,
-      padding: "14px 16px",
-      marginBottom: 14,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between"
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#93c5fd"
-    }
-  }, "💵 KASSENSTAND"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 22,
-      fontWeight: 900,
-      color: kassenstand >= 0 ? "#4ade80" : "#f87171",
-      marginTop: 3
-    }
-  }, kassenstand >= 0 ? "+" : "", kassenstand.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 28
-    }
-  }, kassenstand >= 0 ? "✅" : "⚠️")), isKasse && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setZeigeForm(v => !v),
-    style: {
-      flex: 1,
-      padding: "10px",
-      background: "rgba(34,136,255,0.1)",
-      border: "1px solid #2288FF44",
-      borderRadius: 10,
-      color: "#60a5fa",
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: "pointer"
-    }
-  }, "➕ Neue Periode"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setZeigeManuell(v => !v),
-    style: {
-      flex: 1,
-      padding: "10px",
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid #003070",
-      borderRadius: 10,
-      color: "#94a3b8",
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: "pointer"
-    }
-  }, "📝 Manuell buchen")), isKasse && zeigeForm && /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "rgba(34,136,255,0.06)",
-      border: "1px solid #2288FF33",
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "#2288FF",
-      fontWeight: 700,
-      marginBottom: 10
-    }
-  }, "➕ Periode anlegen"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("select", {
-    value: formMonat,
-    onChange: e => setFormMonat(parseInt(e.target.value)),
-    style: {
-      ...IS,
-      marginTop: 0,
-      flex: 2
-    }
-  }, MONATE.map((m, i) => /*#__PURE__*/React.createElement("option", {
-    key: i,
-    value: i
-  }, m))), /*#__PURE__*/React.createElement("select", {
-    value: formJahr,
-    onChange: e => setFormJahr(parseInt(e.target.value)),
-    style: {
-      ...IS,
-      marginTop: 0,
-      flex: 1
-    }
-  }, [2024, 2025, 2026, 2027, 2028].map(y => /*#__PURE__*/React.createElement("option", {
-    key: y,
-    value: y
-  }, y)))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8",
-      marginBottom: 10
-    }
-  }, "🏃 Arbeiter: 5,00 € · 🎓 Azubi/Schüler: 2,50 €"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: erstellePeriode,
-    style: {
-      flex: 1,
-      padding: "10px",
-      background: "linear-gradient(135deg,#0066CC,#2288FF)",
-      border: "none",
-      borderRadius: 10,
-      color: "white",
-      fontSize: 13,
-      fontWeight: 800,
-      cursor: "pointer"
-    }
-  }, "✅ Erstellen (", eigeneBenutzer.length, " Spieler)"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setZeigeForm(false),
-    style: {
-      padding: "10px 14px",
-      background: "rgba(255,255,255,0.05)",
-      border: "1px solid #003070",
-      color: "#94a3b8",
-      borderRadius: 10,
-      cursor: "pointer"
-    }
-  }, "✕"))), isKasse && zeigeManuell && /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid #003070",
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: "#94a3b8",
-      fontWeight: 700,
-      marginBottom: 10
-    }
-  }, "📝 Manuelle Buchung"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 6,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setManuellForm(f => ({
-      ...f,
-      typ: "ausgabe"
-    })),
-    style: {
-      flex: 1,
-      padding: "8px",
-      borderRadius: 8,
-      cursor: "pointer",
-      border: `2px solid ${manuellForm.typ === "ausgabe" ? "#f87171" : "#003070"}`,
-      background: manuellForm.typ === "ausgabe" ? "rgba(248,113,113,0.15)" : "rgba(255,255,255,0.03)",
-      color: manuellForm.typ === "ausgabe" ? "#f87171" : "#64748b",
-      fontWeight: 700,
-      fontSize: 12
-    }
-  }, "🛍️ Ausgabe"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setManuellForm(f => ({
-      ...f,
-      typ: "einnahme"
-    })),
-    style: {
-      flex: 1,
-      padding: "8px",
-      borderRadius: 8,
-      cursor: "pointer",
-      border: `2px solid ${manuellForm.typ === "einnahme" ? "#4ade80" : "#003070"}`,
-      background: manuellForm.typ === "einnahme" ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.03)",
-      color: manuellForm.typ === "einnahme" ? "#4ade80" : "#64748b",
-      fontWeight: 700,
-      fontSize: 12
-    }
-  }, "💰 Einnahme")), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "Beschreibung (z.B. Busfahrt, Spritgeld...)",
-    value: manuellForm.beschreibung,
-    onChange: e => setManuellForm(f => ({
-      ...f,
-      beschreibung: e.target.value
-    })),
-    style: {
-      ...IS,
-      marginTop: 0,
-      marginBottom: 8
-    }
-  }), /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    placeholder: "Betrag in €",
-    value: manuellForm.betrag,
-    onChange: e => setManuellForm(f => ({
-      ...f,
-      betrag: e.target.value
-    })),
-    style: {
-      ...IS,
-      marginTop: 0,
-      marginBottom: 10
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: speichereManuell,
-    style: {
-      flex: 1,
-      padding: "10px",
-      background: `linear-gradient(135deg,${manuellForm.typ === "ausgabe" ? "#991b1b,#f87171" : "#14532d,#4ade80"})`,
-      border: "none",
-      borderRadius: 10,
-      color: "white",
-      fontWeight: 800,
-      fontSize: 13,
-      cursor: "pointer"
-    }
-  }, manuellForm.typ === "ausgabe" ? "🛍️ Ausgabe buchen" : "💰 Einnahme buchen"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setZeigeManuell(false),
-    style: {
-      padding: "10px 14px",
-      background: "rgba(255,255,255,0.05)",
-      border: "1px solid #003070",
-      color: "#94a3b8",
-      borderRadius: 10,
-      cursor: "pointer"
-    }
-  }, "✕"))), periodeEintraege.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "center",
-      color: "#475569",
-      padding: "30px 0"
-    }
-  }, "💵 Keine Einträge für ", MONATE[monat], " ", jahr) : /*#__PURE__*/React.createElement(React.Fragment, null, beitragsEintraege.filter(e => !e.bezahlt).length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement(SectionHeader, {
-    label: `⏳ NOCH NICHT BEZAHLT (${beitragsEintraege.filter(e => !e.bezahlt).length})`,
-    color: "#f87171",
-    open: offenOffen,
-    setOpen: setOffenOffen
-  }), offenOffen && beitragsEintraege.filter(e => !e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
-    key: e.id,
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "10px 14px",
-      borderRadius: 12,
-      marginBottom: 6,
-      background: "rgba(248,113,113,0.06)",
-      border: "1px solid #f8717125"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      fontSize: 13
-    }
-  }, e.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#94a3b8"
-    }
-  }, e.kategorie === "azubi" ? "🎓 Azubi/Schüler" : "🏃 Arbeiter", " · ", e.betrag.toFixed(2), " € · ", /*#__PURE__*/React.createElement("a", {
-    href: PAYPAL,
-    target: "_blank",
-    rel: "noopener noreferrer",
-    style: {
-      color: "#60a5fa",
-      textDecoration: "underline"
-    }
-  }, "PayPal"))), isKasse && /*#__PURE__*/React.createElement("button", {
-    onClick: () => bestaetigen(e),
-    style: {
-      padding: "6px 12px",
-      background: "rgba(74,222,128,0.15)",
-      border: "1px solid #4ade80",
-      color: "#4ade80",
-      borderRadius: 8,
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: "pointer",
-      flexShrink: 0
-    }
-  }, "✓ Bezahlt")))), beitragsEintraege.filter(e => e.bezahlt).length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 14
-    }
-  }, /*#__PURE__*/React.createElement(SectionHeader, {
-    label: `✅ BEITRÄGE BEZAHLT (${beitragsEintraege.filter(e => e.bezahlt).length})`,
-    color: "#4ade80",
-    open: bezahltOffen,
-    setOpen: setBezahltOffen
-  }), bezahltOffen && beitragsEintraege.filter(e => e.bezahlt).sort((a, b) => a.name.localeCompare(b.name)).map(e => /*#__PURE__*/React.createElement("div", {
-    key: e.id,
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "10px 14px",
-      borderRadius: 12,
-      marginBottom: 6,
-      background: "rgba(74,222,128,0.06)",
-      border: "1px solid #4ade8025"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      fontSize: 13
-    }
-  }, e.name), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#64748b"
-    }
-  }, e.kategorie === "azubi" ? "🎓" : "🏃", " ", e.betrag.toFixed(2), " € · ", e.bezahltAm)), isKasse && /*#__PURE__*/React.createElement("button", {
-    onClick: () => rueckgaengig(e),
-    style: {
-      padding: "5px 9px",
-      background: "rgba(255,255,255,0.05)",
-      border: "1px solid #003070",
-      color: "#64748b",
-      borderRadius: 8,
-      fontSize: 11,
-      cursor: "pointer",
-      flexShrink: 0
-    }
-  }, "↩️")))), manuellEintraege.length > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(SectionHeader, {
-    label: `📋 MANUELLE BUCHUNGEN (${manuellEintraege.length})`,
-    color: "#94a3b8",
-    open: manuellOffen,
-    setOpen: setManuellOffen
-  }), manuellOffen && manuellEintraege.sort((a, b) => (b.ts || 0) - (a.ts || 0)).map(e => /*#__PURE__*/React.createElement("div", {
-    key: e.id,
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      padding: "10px 14px",
-      borderRadius: 12,
-      marginBottom: 6,
-      background: (e.betrag || 0) >= 0 ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)",
-      border: `1px solid ${(e.betrag || 0) >= 0 ? "#4ade8025" : "#f8717125"}`
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      fontSize: 13
-    }
-  }, (e.betrag || 0) >= 0 ? "💰 " : "🛍️ ", e.beschreibung), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: "#64748b"
-    }
-  }, e.datum, " · ", e.ersteller)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 800,
-      color: (e.betrag || 0) >= 0 ? "#4ade80" : "#f87171",
-      fontSize: 14,
-      marginRight: 6
-    }
-  }, (e.betrag || 0) >= 0 ? "+" : "", (e.betrag || 0).toFixed(2), " €"), isKasse && /*#__PURE__*/React.createElement("button", {
-    onClick: () => loescheEintrag(e.id),
-    style: {
-      padding: "4px 8px",
-      background: "rgba(248,113,113,0.1)",
-      border: "1px solid rgba(248,113,113,0.3)",
-      color: "#f87171",
-      borderRadius: 7,
-      fontSize: 11,
-      cursor: "pointer"
-    }
-  }, "🗑️"))))));
-}
-
-
 function SchwarzeBrettVerwaltung({
   schwarzesBrett,
   cu,
@@ -3764,28 +3089,7 @@ function MainApp({
   const [sonstiges, setSonstiges] = useState([]);
   const [benutzer, setBenutzer] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("buche") ? "buchen" : "konto";
-  });
-  const [vorgewaehlterArtikel, setVorgewaehlterArtikel] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("buche") || null;
-  });
-  useEffect(() => {
-    if(vorgewaehlterArtikel && (getraenke.length > 0 || sonstiges.length > 0)) {
-      const g = getraenke.find(x => x.id === vorgewaehlterArtikel) ||
-                sonstiges.find(x => x.id === vorgewaehlterArtikel);
-      if(g) {
-        setTab("buchen");
-        if(sonstiges.find(x => x.id === vorgewaehlterArtikel)) setBuchKat("sonstiges");
-        else setBuchKat("getraenk");
-        const meinSp = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
-        if(meinSp) setGwS(meinSp.id);
-        window.history.replaceState({}, "", window.location.pathname);
-      }
-    }
-  }, [vorgewaehlterArtikel, getraenke, sonstiges, spieler]);
+  const [tab, setTab] = useState("konto");
   const [toastMsg, setToastMsg] = useState(null);
   const [gwS, setGwS] = useState(null);
   const [datum, setDatum] = useState(todayStr());
@@ -3799,7 +3103,6 @@ function MainApp({
   });
   const [nName, setNName] = useState("");
   const [guthabenOffen, setGuthabenOffen] = useState(true);
-  const [offeneKategorie, setOffeneKategorie] = useState(null);
   const [topTrinkerOffen, setTopTrinkerOffen] = useState(true);
   const [monatsOffen, setMonatsOffen] = useState(false);
   const [spielerListeOffen, setSpielerListeOffen] = useState(true);
@@ -3816,11 +3119,9 @@ function MainApp({
   const [strafenEintraege, setStrafenEintraege] = useState([]);
   const [termine, setTermine] = useState([]);
   const [schwarzesBrett, setSchwarzBrett] = useState([]);
-  const [mannschaftskasse, setMannschaftskasse] = useState([]);
   const isAdmin = cu.rolle === "admin";
   const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
   const isEventorga = cu.rolle === "eventorga" || isAdmin;
-  const isKasse = cu.rolle === "kasse" || isAdmin;
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -3863,7 +3164,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 9) setLoading(false);
+      if (n >= 8) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -3925,19 +3226,21 @@ function MainApp({
       })).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
       done();
     });
-    const u9 = col("mannschaftskasse").onSnapshot(s => {
-      setMannschaftskasse(s.docs.map(d => ({id: d.id, ...d.data()})));
-      done();
-    });
     return () => {
-      u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9();
+      u1();
+      u2();
+      u3();
+      u4();
+      u5();
+      u6();
+      u7();
+      u8();
     };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
-  const [buchKat, setBuchKat] = useState("getraenk");
-  const [qrModal, setQrModal] = useState(null); // "getraenk" | "sonstiges"
+  const [buchKat, setBuchKat] = useState("getraenk"); // "getraenk" | "sonstiges"
   const [buchMannschaftTab, setBuchMannschaftTab] = useState("meine"); // "meine" | "sonstige"
   const [buchMannschaftWahl, setBuchMannschaftWahl] = useState(cu.mannschaft || "1. Herren");
   const buchArtikel = async (g, typ) => {
@@ -4067,7 +3370,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isAdmin ? [["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -4135,7 +3438,7 @@ function MainApp({
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : cu.rolle === "kasse" ? "💵" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
       border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
@@ -4215,7 +3518,6 @@ function MainApp({
     const perDir = meineG.filter(e => e.zahlart === "direkt").length;
     // Zusage-Quote: nur vergangene Trainings der eigenen Mannschaft, bei denen reagiert wurde
     const meinSpielerObj = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
-    // Meine offenen Strafen
     const meineOffenenStrafen = meinSpielerObj
       ? strafenEintraege.filter(e => e.spielerId === meinSpielerObj.id && !e.bezahlt)
       : [];
@@ -4360,7 +3662,7 @@ function MainApp({
             href: "https://www.paypal.me/HandballEMD",
             target: "_blank",
             rel: "noopener noreferrer",
-            style: {fontSize:11,color:"#60a5fa",textDecoration:"underline",fontWeight:600}
+            style: {fontSize:11,color:"#60a5fa",textDecoration:"underline"}
           }, "💳 PayPal")
         )
       )),
@@ -4732,7 +4034,7 @@ function MainApp({
         textTransform: "uppercase",
         marginBottom: 12
       }
-    }, "🔑 Passwort ändern"), ), /*#__PURE__*/React.createElement("div", {
+    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("div", {
       style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,marginTop:4}
     }, "🏐 Handball-ID"), /*#__PURE__*/React.createElement("div", {
       style: {display:"flex",gap:8,marginBottom:16}
@@ -4862,7 +4164,7 @@ function MainApp({
         color: CATS[e.typ]?.color,
         flexShrink: 0
       }
-    }, e.typ === "ausgabe" ? "-" : "+", e.betrag.toFixed(2), " €")));
+    }, e.typ === "ausgabe" ? "-" : "+", e.betrag.toFixed(2), " €"))));
   })(), tab === "buchen" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
@@ -4887,10 +4189,7 @@ function MainApp({
       borderRadius: 12,
       padding: "10px 14px"
     }
-  }, vorgewaehlterArtikel && /*#__PURE__*/React.createElement("div", {
-    style: {background:"rgba(167,139,250,0.12)",border:"1px solid #a78bfa44",borderRadius:10,padding:"10px 12px",marginBottom:12,fontSize:13,color:"#c4b5fd",fontWeight:600}
-  }, "📲 QR-Code erkannt: ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).emoji||"", " ", (getraenke.find(x=>x.id===vorgewaehlterArtikel)||{}).name||"", " — Spieler antippen → wird sofort gebucht!"),
-  /*#__PURE__*/React.createElement("span", null, "📅"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "📅"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
       color: "#94a3b8",
@@ -5016,27 +4315,7 @@ function MainApp({
       const g = bu?.guthaben || 0;
       return /*#__PURE__*/React.createElement("button", {
         key: sp.id,
-        onClick: async () => {
-            if(vorgewaehlterArtikel && gwS !== sp.id) {
-              // Auto-book: select player and immediately book the pre-selected article
-              const g = getraenke.find(x => x.id === vorgewaehlterArtikel);
-              if(g) {
-                setGwS(sp.id);
-                const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
-                if(zahlart === "guthaben") {
-                  const gut2 = bu?.guthaben || 0;
-                  if(!bu) return toast("⚠️ Kein Benutzer gefunden!");
-                  if(gut2 < g.preis) return toast("⚠️ Guthaben reicht nicht!");
-                  await ref("benutzer", bu.id).update({guthaben: gut2 - g.preis});
-                }
-                await col("eintraege").add({typ:"getraenk", betrag:g.preis, beschreibung:g.name, getraenkEmoji:g.emoji, person:sp.name, spielerId:sp.id, datum:fmtD(datum), datumRaw:datum, zeit:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}), gebuchtvon:cu.benutzername, zahlart, ts:Date.now()});
-                toast("✅ " + g.emoji + " " + g.name + " für " + sp.name + " gebucht!");
-                setVorgewaehlterArtikel(null);
-                return;
-              }
-            }
-            setGwS(gwS === sp.id ? null : sp.id);
-          },
+        onClick: () => setGwS(gwS === sp.id ? null : sp.id),
         style: {
           display: "flex",
           alignItems: "center",
@@ -5197,8 +4476,8 @@ function MainApp({
         padding: "14px 10px",
         borderRadius: 14,
         cursor: "pointer",
-        border: vorgewaehlterArtikel === g.id ? "3px solid #fbbf24" : `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
-        background: vorgewaehlterArtikel === g.id ? "rgba(251,191,36,0.15)" : gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
+        border: `1px solid ${gwS && !nok ? akzent + "44" : "#003070"}`,
+        background: gwS && !nok ? `rgba(${buchKat === "getraenk" ? "34,136,255" : "167,139,250"},0.08)` : "rgba(255,255,255,0.03)",
         color: gwS && !nok ? "#e2e8f0" : "#475569",
         display: "flex",
         flexDirection: "column",
@@ -5552,72 +4831,47 @@ function MainApp({
     color: "#60a5fa",
     bg: "rgba(96,165,250,0.08)",
     key: "spende"
-  }].map(s => /*#__PURE__*/React.createElement("div", {key: s.key, style:{marginBottom:10}},
-    /*#__PURE__*/React.createElement("div", {
-      onClick: () => setOffeneKategorie(offeneKategorie === s.key ? null : s.key),
-      style: {
-        background: s.bg, border: `1px solid ${s.color}30`,
-        borderRadius: offeneKategorie===s.key ? "13px 13px 0 0" : 13,
-        padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer"
-      }
-    },
-      /*#__PURE__*/React.createElement("div", {
-        style: {width:44,height:44,borderRadius:11,background:`${s.color}20`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}
-      }, s.emoji),
-      /*#__PURE__*/React.createElement("div", null,
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8"}}, s.label),
-        /*#__PURE__*/React.createElement("div", {style:{fontSize:21,fontWeight:800,color:s.color}}, s.value.toFixed(2), " €")
-      ),
-      /*#__PURE__*/React.createElement("div", {style:{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}},
-        /*#__PURE__*/React.createElement("span", {style:{fontSize:12,color:"#64748b"}}, eintraege.filter(e => e.typ === s.key).length, " ×"),
-        /*#__PURE__*/React.createElement("span", {style:{fontSize:13,color:s.color,transform:offeneKategorie===s.key?"rotate(0deg)":"rotate(-90deg)",transition:"transform 0.2s"}}, "▼")
-      )
-    ),
-    offeneKategorie === s.key && /*#__PURE__*/React.createElement("div", {
-      style: {background:"rgba(0,0,0,0.2)",border:`1px solid ${s.color}30`,borderTop:"none",borderRadius:"0 0 13px 13px",padding:"8px 12px",maxHeight:320,overflowY:"auto"}
-    },
-      (s.key === "getraenk" || s.key === "sonstiges") ? (() => {
-        const grouped = {};
-        eintraege.filter(e => e.typ === s.key).forEach(e => {
-          const name = e.beschreibung || "—";
-          if(!grouped[name]) grouped[name] = {name, count:0, summe:0, emoji:e.getraenkEmoji||""};
-          grouped[name].count++;
-          grouped[name].summe += e.betrag||0;
-        });
-        return Object.values(grouped).sort((a,b) => b.count - a.count).map(g =>
-          /*#__PURE__*/React.createElement("div", {
-            key: g.name,
-            style: {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 4px",borderBottom:"1px solid rgba(255,255,255,0.05)"}
-          },
-            /*#__PURE__*/React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6}},
-              g.emoji && /*#__PURE__*/React.createElement("span", {style:{fontSize:16}}, g.emoji),
-              /*#__PURE__*/React.createElement("div", null,
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:700}}, g.name),
-                /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:"#64748b"}}, g.count, "× bestellt")
-              )
-            ),
-            /*#__PURE__*/React.createElement("span", {style:{fontSize:13,fontWeight:800,color:s.color,flexShrink:0}},
-              "+", g.summe.toFixed(2), " €"
-            )
-          )
-        );
-      })() :
-      eintraege.filter(e => e.typ === s.key).sort((a,b) => (b.ts||0)-(a.ts||0)).map(e =>
-        /*#__PURE__*/React.createElement("div", {
-          key: e.id,
-          style: {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 4px",borderBottom:"1px solid rgba(255,255,255,0.05)"}
-        },
-          /*#__PURE__*/React.createElement("div", null,
-            /*#__PURE__*/React.createElement("div", {style:{fontSize:12,fontWeight:600}}, e.beschreibung||e.grund||"—"),
-            /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:"#64748b"}}, e.datum||"", e.person?" · "+e.person:"")
-          ),
-          /*#__PURE__*/React.createElement("span", {style:{fontSize:13,fontWeight:800,color:s.color,flexShrink:0}},
-            s.key==="ausgabe"?"-":"+", e.betrag.toFixed(2), " €"
-          )
-        )
-      )
-    )
-  )), /*#__PURE__*/React.createElement("div", {
+  }].map(s => /*#__PURE__*/React.createElement("div", {
+    key: s.key,
+    style: {
+      background: s.bg,
+      border: `1px solid ${s.color}30`,
+      borderRadius: 13,
+      padding: "14px 16px",
+      marginBottom: 10,
+      display: "flex",
+      alignItems: "center",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 11,
+      background: `${s.color}20`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 20
+    }
+  }, s.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8"
+    }
+  }, s.label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 21,
+      fontWeight: 800,
+      color: s.color
+    }
+  }, s.value.toFixed(2), " €")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: "auto",
+      fontSize: 12,
+      color: "#64748b"
+    }
+  }, eintraege.filter(e => e.typ === s.key).length, " ×"))), /*#__PURE__*/React.createElement("div", {
     style: {
       background: "linear-gradient(135deg,#003F8A,#001F50)",
       border: "2px solid #0055AA",
@@ -6412,10 +5666,6 @@ function MainApp({
       fontWeight: 800
     }
   }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setQrModal(g),
-    title: "QR-Code anzeigen",
-    style: {background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}
-  }, "⬛"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEditG(g),
     style: {
       background: "rgba(34,136,255,0.1)",
@@ -6439,8 +5689,7 @@ function MainApp({
     }
   }, "🗑️"))))), tab === "sonstiges" && /*#__PURE__*/React.createElement(SonstigesTab, {
     sonstiges: sonstiges,
-    toast: toast,
-    setQrModal: setQrModal
+    toast: toast
   }), tab === "termine" && /*#__PURE__*/React.createElement(TermineTab, {
     benutzer: benutzer,
     spieler: spieler,
@@ -6454,10 +5703,7 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "kasse" && isKasse && /*#__PURE__*/React.createElement(MannschaftsKasseTab, {
-        benutzer: benutzer, spieler: spieler, mannschaftskasse: mannschaftskasse,
-        cu: cu, isKasse: isKasse, toast: toast
-      }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
+  }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 20
     }
@@ -6484,22 +5730,18 @@ function MainApp({
       borderTop: "1px solid #003F8A",
       display: "flex",
       padding: "8px 0 20px",
-      zIndex: 20,
-      overflowX: "auto",
-      WebkitOverflowScrolling: "touch",
-      scrollbarWidth: "none"
+      zIndex: 20
     }
   }, navs.map(([key, emoji, label]) => /*#__PURE__*/React.createElement("button", {
     key: key,
     onClick: () => setTab(key),
     style: {
-      flex: "0 0 auto",
-      minWidth: 60,
+      flex: 1,
       background: "none",
       border: "none",
       color: tab === key ? "#2288FF" : "#475569",
       cursor: "pointer",
-      padding: "6px 8px",
+      padding: "6px 0",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -6514,57 +5756,7 @@ function MainApp({
       fontSize: 9,
       fontWeight: tab === key ? 700 : 400
     }
-  }, label)))), qrModal && /*#__PURE__*/React.createElement("div", {
-    onClick: () => setQrModal(null),
-    style: {position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}
-  }, /*#__PURE__*/React.createElement("div", {
-    onClick: e => e.stopPropagation(),
-    style: {background:"#001A3A",border:"2px solid #a78bfa",borderRadius:16,padding:24,width:"100%",maxWidth:320,textAlign:"center"}
-  },
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:16,fontWeight:800,marginBottom:4}}, qrModal && qrModal.emoji, " ", qrModal && qrModal.name),
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#a78bfa",fontWeight:700,marginBottom:16}}, qrModal && qrModal.preis.toFixed(2), " €"),
-    /*#__PURE__*/React.createElement("div", {
-      id: "qr-container",
-      ref: el => {
-        if(el && qrModal && typeof QRCode !== "undefined") {
-          el.innerHTML = "";
-          new QRCode(el, {
-            text: "https://3hsg-emden-kasse.de?buche=" + qrModal.id,
-            width: 200, height: 200,
-            colorDark: "#000000", colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-          });
-        }
-      },
-      style: {display:"flex",justifyContent:"center",marginBottom:16,background:"white",padding:10,borderRadius:8}
-    }),
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#64748b",marginBottom:14}}, "Scannen → App öffnet direkt den Buchen-Tab"),
-    /*#__PURE__*/React.createElement("button", {
-      onClick: () => {
-        if(!qrModal) return;
-        const url = "https://3hsg-emden-kasse.de?buche=" + qrModal.id;
-        const win = window.open("", "_blank");
-        win.document.write("<!DOCTYPE html><html><head><title>QR " + qrModal.name + "</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>" + qrModal.emoji + " " + qrModal.name + " — " + qrModal.preis.toFixed(2) + " €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>" + url + "</p><script>new QRCode(document.getElementById('qr'),{text:'" + url + "',width:300,height:300});<\/script></body></html>");
-        win.document.close();
-        setTimeout(() => win.print(), 800);
-      },
-      style: {width:"100%",padding:"11px",background:"linear-gradient(135deg,#6d28d9,#a78bfa)",border:"none",borderRadius:10,color:"white",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:8}
-    }, "🖨️ QR-Code drucken"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => {
-        const canvas = document.querySelector("#qr-container canvas");
-        if(!canvas) return;
-        const link = document.createElement("a");
-        link.download = (qrModal ? qrModal.name : "qrcode").replace(/\s+/g, "_") + "_QR.png";
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-      },
-      style: {width:"100%",padding:"11px",background:"rgba(74,222,128,0.15)",border:"1px solid #4ade80",borderRadius:10,color:"#4ade80",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:8}
-    }, "⬇️ PNG herunterladen (für Dymo)"),
-    /*#__PURE__*/React.createElement("button", {
-      onClick: () => setQrModal(null),
-      style: {width:"100%",padding:"10px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer",fontSize:13}
-    }, "Schließen")
-  )), toastMsg && /*#__PURE__*/React.createElement("div", {
+  }, label)))), toastMsg && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
       top: 70,
