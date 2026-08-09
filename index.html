@@ -463,6 +463,27 @@ function BenutzerTab({
     await ref("benutzer", id).delete();
     toast("🗑️ Gelöscht");
   };
+  const [pdfMannschaft, setPdfMannschaft] = useState("3. Herren");
+
+  const erstelleMitgliederliste = () => {
+    const mitglieder = benutzer
+      .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.benutzername !== "admin.3hsg")
+      .sort((a,b) => (parseInt(a.trikotnummer)||999)-(parseInt(b.trikotnummer)||999) || a.nachname.localeCompare(b.nachname));
+    if(mitglieder.length === 0) return toast("⚠️ Keine Mitglieder!");
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
+<style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:20px}.header h1{color:#003F8A;font-size:22px;margin:0 0 4px 0}.header h2{font-size:15px;color:#333;margin:0;font-weight:normal}table{width:100%;border-collapse:collapse}th{background:#003F8A;color:white;padding:10px 12px;text-align:left;font-size:13px}td{padding:9px 12px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:24px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px}</style>
+</head><body>
+<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
+<table><thead><tr><th>#</th><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th><th>Kategorie</th></tr></thead>
+<tbody>${mitglieder.map((b,i)=>`<tr><td>${i+1}</td><td>${b.trikotnummer||""}</td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position||""}</td><td><strong>${b.handballId||""}</strong></td><td>${b.kategorie==="azubi"?"Azubi/Schüler":"Arbeiter"}</td></tr>`).join("")}</tbody></table>
+<div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
+</body></html>`;
+    const win = window.open("","_blank");
+    win.document.write(html);
+    win.document.close();
+    setTimeout(()=>win.print(),500);
+  };
+
   const saveEdit = async () => {
     if (!edit.vorname.trim() || !edit.nachname.trim()) return;
     await ref("benutzer", edit.id).set({
@@ -474,7 +495,10 @@ function BenutzerTab({
       mannschaft: edit.mannschaft || "1. Herren",
       guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
-      handballId: edit.handballId || ""
+      handballId: edit.handballId || "",
+      trikotnummer: edit.trikotnummer || "",
+      position: edit.position || "",
+      kategorie: edit.kategorie || "arbeiter"
     });
     setEdit(null);
     toast("✅ Gespeichert");
@@ -586,6 +610,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -614,7 +640,33 @@ function BenutzerTab({
     value: edit.handballId || "",
     onChange: e => setEdit(x => ({...x, handballId: e.target.value})),
     style: {...IS, marginTop:4, marginBottom:10}
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "👕 TRIKOTNUMMER (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "number", placeholder: "z.B. 7",
+    value: edit.trikotnummer || "",
+    onChange: e => setEdit(x => ({...x, trikotnummer: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "⚽ POSITION"), /*#__PURE__*/React.createElement("select", {
+    value: edit.position || "",
+    onChange: e => setEdit(x => ({...x, position: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }, /*#__PURE__*/React.createElement("option", {value:""},"— Bitte wählen —"),
+    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Fest)"},"🏃 Feldspieler (Fest)"),
+    /*#__PURE__*/React.createElement("option", {value:"Feldspieler (Springer)"},"🔄 Feldspieler (Springer)"),
+    /*#__PURE__*/React.createElement("option", {value:"Torwart"},"🧤 Torwart"),
+    /*#__PURE__*/React.createElement("option", {value:"Mannschaftsverantwortlicher"},"📋 Mannschaftsverantwortlicher")
+  ), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize:11,color:"#94a3b8",fontWeight:700,display:"block"}
+  }, "💰 KATEGORIE BEITRAG"), /*#__PURE__*/React.createElement("select", {
+    value: edit.kategorie || "arbeiter",
+    onChange: e => setEdit(x => ({...x, kategorie: e.target.value})),
+    style: {...IS, marginTop:4, marginBottom:10}
+  }, /*#__PURE__*/React.createElement("option", {value:"arbeiter"},"🏃 Arbeiter (5,00 €/Monat)"),
+    /*#__PURE__*/React.createElement("option", {value:"azubi"},"🎓 Azubi / Schüler (2,50 €/Monat)")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8
@@ -686,7 +738,7 @@ function BenutzerTab({
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":b.position==="Feldspieler (Springer)"?"🔄 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#f472b6",
@@ -803,7 +855,21 @@ function BenutzerTab({
       fontWeight: 800,
       cursor: "pointer"
     }
-  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
+  }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement("div", {
+    style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:8}}, "📋 Mitgliederliste als PDF"),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine Liste mit Trikot, Position, Handball-ID und Kategorie."),
+    /*#__PURE__*/React.createElement("select", {
+      value: pdfMannschaft,
+      onChange: e => setPdfMannschaft(e.target.value),
+      style: {...IS, marginTop:0, marginBottom:10}
+    }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {key:m, value:m}, m))),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: erstelleMitgliederliste,
+      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}
+    }, "📄 Mitgliederliste erstellen")
+  ), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
     schwarzesBrett: schwarzesBrett || [],
     cu: cu,
     toast: toast
@@ -1015,6 +1081,8 @@ function BenutzerTab({
   }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
     value: "eventorga"
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
+    value: "kasse"
+  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
