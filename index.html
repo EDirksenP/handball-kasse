@@ -582,7 +582,8 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       nachname: edit.nachname.trim(),
       benutzername: bn(edit.vorname, edit.nachname),
       passwort: edit.passwort.trim(),
-      rolle: edit.rolle,
+      rolle: Array.isArray(edit.rollen) && edit.rollen.length > 0 ? edit.rollen[0] : (edit.rolle||"mitglied"),
+      rollen: Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"],
       mannschaft: edit.mannschaft || "1. Herren",
       guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
@@ -683,28 +684,40 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
     key: m,
     value: m
-  }, m))), /*#__PURE__*/React.createElement("select", {
-    value: edit.rolle,
-    onChange: e => setEdit(x => ({
-      ...x,
-      rolle: e.target.value
-    })),
-    style: {
-      ...IS,
-      marginTop: 0,
-      marginBottom: 8
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: "mitglied"
-  }, "Mitglied"), /*#__PURE__*/React.createElement("option", {
-    value: "strafenwart"
-  }, "Strafenwart"), /*#__PURE__*/React.createElement("option", {
-    value: "eventorga"
-  }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
-    value: "kasse"
-  }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
-    value: "admin"
-  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+  }, m))), /*#__PURE__*/React.createElement("div", null,
+    /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,minHeight:36,padding:"6px 8px",background:"rgba(255,255,255,0.03)",border:"1px solid #003070",borderRadius:10}},
+      (Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"]).map(r =>
+        /*#__PURE__*/React.createElement("span", {key:r, style:{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}},
+          r==="mitglied"?"Mitglied":r==="strafenwart"?"⚖️ Strafenwart":r==="eventorga"?"📅 Eventorganisation":r==="kasse"?"💵 Kasse":r==="zeitnahmeadmin"?"⏱️ Zeitnahme-Admin":"👑 Admin",
+          /*#__PURE__*/React.createElement("button", {
+            onClick: () => setEdit(x => ({...x, rollen: (Array.isArray(x.rollen)?x.rollen:[x.rolle||"mitglied"]).filter(rr=>rr!==r) })),
+            style:{background:"none",border:"none",cursor:"pointer",color:"#f87171",fontSize:14,lineHeight:1,padding:"0 0 0 2px",fontWeight:900}
+          }, "×")
+        )
+      ),
+      (Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"]).length === 0 &&
+        /*#__PURE__*/React.createElement("span", {style:{fontSize:12,color:"#475569"}}, "Keine Rolle — Mitglied auswählen")
+    ),
+    /*#__PURE__*/React.createElement("select", {
+      value: "",
+      onChange: e => {
+        if(!e.target.value) return;
+        const aktuelle = Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"];
+        if(!aktuelle.includes(e.target.value)) {
+          setEdit(x => ({...x, rollen: [...aktuelle, e.target.value]}));
+        }
+        e.target.value = "";
+      },
+      style: {...IS, marginTop:0, marginBottom:8}
+    }, /*#__PURE__*/React.createElement("option", {value:""}, "➕ Rolle hinzufügen..."),
+      /*#__PURE__*/React.createElement("option", {value:"mitglied"}, "Mitglied"),
+      /*#__PURE__*/React.createElement("option", {value:"strafenwart"}, "⚖️ Strafenwart"),
+      /*#__PURE__*/React.createElement("option", {value:"eventorga"}, "📅 Eventorganisation"),
+      /*#__PURE__*/React.createElement("option", {value:"kasse"}, "💵 Kasse"),
+      /*#__PURE__*/React.createElement("option", {value:"zeitnahmeadmin"}, "⏱️ Zeitnahme-Admin"),
+      /*#__PURE__*/React.createElement("option", {value:"admin"}, "👑 Admin")
+    )
+  ), /*#__PURE__*/React.createElement("label", {
     style: {
       fontSize: 11,
       color: "#94a3b8",
@@ -877,7 +890,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       cursor: "pointer"
     }
   }, "💰"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setEdit(b),
+    onClick: () => setEdit({...b, rollen: Array.isArray(b.rollen) ? b.rollen : [b.rolle||"mitglied"]}),
     style: {
       background: "rgba(34,136,255,0.1)",
       border: "1px solid rgba(34,136,255,0.3)",
@@ -1188,6 +1201,8 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   }, "Eventorganisation"), /*#__PURE__*/React.createElement("option", {
     value: "kasse"
   }, "💵 Kasse"), /*#__PURE__*/React.createElement("option", {
+    value: "zeitnahmeadmin"
+  }, "⏱️ Zeitnahme-Admin"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
   }, "Admin")), /*#__PURE__*/React.createElement("label", {
     style: {
@@ -3101,6 +3116,442 @@ function SonstigesTab({
 }
 
 // ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
+// ── ZEITNAHME TAB ──────────────────────────────────────────
+function ZeitnahmeTab({
+  benutzer,
+  cu,
+  zeitnahmeTermine,
+  toast,
+  isZeitnahmeAdmin
+}) {
+  const [zeigeForm, setZeigeForm] = useState(false);
+  const [form, setForm] = useState({
+    titel: "",
+    datum: "",
+    uhrzeit: "",
+    ort: "",
+    mannschaft: cu.mannschaft || "1. Herren",
+    info: ""
+  });
+  const meinName = cu.vorname + " " + cu.nachname;
+  const meineMannschaft = cu.mannschaft || "1. Herren";
+  const eigeneTermine = zeitnahmeTermine.filter(t => (t.mannschaft || "1. Herren") === meineMannschaft).sort((a, b) => a.datum.localeCompare(b.datum));
+  const erstellen = async () => {
+    if (!form.titel.trim() || !form.datum || !form.uhrzeit) return toast("⚠️ Bitte alle Pflichtfelder ausfüllen!");
+    await col("zeitnahme").add({
+      titel: form.titel.trim(),
+      datum: form.datum,
+      uhrzeit: form.uhrzeit,
+      ort: form.ort.trim(),
+      mannschaft: form.mannschaft,
+      info: form.info.trim(),
+      zeitnehmer1: null,
+      zeitnehmer2: null,
+      ts: Date.now(),
+      erstelltVon: meinName
+    });
+    setForm({
+      titel: "",
+      datum: "",
+      uhrzeit: "",
+      ort: "",
+      mannschaft: cu.mannschaft || "1. Herren",
+      info: ""
+    });
+    setZeigeForm(false);
+    toast("✅ Zeitnahme-Termin erstellt!");
+  };
+  const eintragen = async (t, slot) => {
+    const update = {};
+    update[slot] = meinName;
+    await ref("zeitnahme", t.id).update(update);
+    toast("✅ Du bist als Zeitnehmer eingetragen!");
+  };
+  const austragen = async (t, slot) => {
+    const update = {};
+    update[slot] = null;
+    await ref("zeitnahme", t.id).update(update);
+    toast("↩️ Austrag erfolgreich");
+  };
+  const loeschen = async id => {
+    await ref("zeitnahme", id).delete();
+    toast("🗑️ Termin gelöscht");
+  };
+  const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#94a3b8",
+      fontWeight: 700,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 16
+    }
+  }, "⏱️ Zeitnehmer — ", meineMannschaft), isZeitnahmeAdmin && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, !zeigeForm ? /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(true),
+    style: {
+      width: "100%",
+      padding: "11px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 13,
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "➕ Zeitnahme-Termin eintragen") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(34,136,255,0.06)",
+      border: "1px solid #2288FF33",
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#2288FF",
+      fontWeight: 700,
+      marginBottom: 12
+    }
+  }, "➕ Neuer Zeitnahme-Termin"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "TITEL / SPIEL *"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. HSG Emden vs. SV Sparta",
+    value: form.titel,
+    onChange: e => setForm(f => ({
+      ...f,
+      titel: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 2
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "DATUM *"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: form.datum,
+    onChange: e => setForm(f => ({
+      ...f,
+      datum: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "UHRZEIT *"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: form.uhrzeit,
+    onChange: e => setForm(f => ({
+      ...f,
+      uhrzeit: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4
+    }
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "ORT / HALLE"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Sporthalle Süd",
+    value: form.ort,
+    onChange: e => setForm(f => ({
+      ...f,
+      ort: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "MANNSCHAFT"), /*#__PURE__*/React.createElement("select", {
+    value: form.mannschaft,
+    onChange: e => setForm(f => ({
+      ...f,
+      mannschaft: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 10
+    }
+  }, MANNSCHAFTEN.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      fontWeight: 700,
+      display: "block"
+    }
+  }, "INFO (optional)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Bitte 30 Min früher da sein",
+    value: form.info,
+    onChange: e => setForm(f => ({
+      ...f,
+      info: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 4,
+      marginBottom: 12
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: erstellen,
+    style: {
+      flex: 1,
+      padding: "11px",
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      borderRadius: 10,
+      color: "white",
+      fontWeight: 800,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, "✅ Erstellen"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setZeigeForm(false),
+    style: {
+      padding: "11px 14px",
+      background: "rgba(255,255,255,0.05)",
+      border: "1px solid #003070",
+      color: "#94a3b8",
+      borderRadius: 10,
+      cursor: "pointer"
+    }
+  }, "✕")))), eigeneTermine.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: "#475569",
+      padding: "40px 0"
+    }
+  }, "⏱️ Keine Zeitnahme-Termine eingetragen") : eigeneTermine.map(t => {
+    const datum = new Date(t.datum + "T12:00:00");
+    const wt = wochentage[datum.getDay()];
+    const datumStr = `${wt}, ${fmtD(t.datum)}`;
+    const istVergangen = t.datum < new Date().toISOString().slice(0, 10);
+    const slot1Frei = !t.zeitnehmer1;
+    const slot2Frei = !t.zeitnehmer2;
+    const ichBinZN1 = t.zeitnehmer1 === meinName;
+    const ichBinZN2 = t.zeitnehmer2 === meinName;
+    const ichBinEingetragen = ichBinZN1 || ichBinZN2;
+    const beideBesetzt = !slot1Frei && !slot2Frei;
+    return /*#__PURE__*/React.createElement("div", {
+      key: t.id,
+      style: {
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${beideBesetzt ? "#4ade8030" : istVergangen ? "#003070" : "#2288FF30"}`,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        marginBottom: 4
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        background: beideBesetzt ? "rgba(74,222,128,0.2)" : istVergangen ? "rgba(100,116,139,0.2)" : "rgba(34,136,255,0.2)",
+        color: beideBesetzt ? "#4ade80" : istVergangen ? "#64748b" : "#60a5fa",
+        padding: "2px 8px",
+        borderRadius: 10,
+        fontWeight: 700
+      }
+    }, beideBesetzt ? "✅ Besetzt" : istVergangen ? "📅 Vergangen" : "🔍 Zeitnehmer gesucht")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 15,
+        marginBottom: 2
+      }
+    }, t.titel), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8"
+      }
+    }, "📅 ", datumStr, " · 🕐 ", t.uhrzeit, " Uhr", t.ort ? ` · 📍 ${t.ort}` : ""), t.info && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#fbbf24",
+        marginTop: 4
+      }
+    }, "ℹ️ ", t.info)), isZeitnahmeAdmin && /*#__PURE__*/React.createElement("button", {
+      onClick: () => loeschen(t.id),
+      style: {
+        background: "rgba(248,113,113,0.1)",
+        border: "1px solid rgba(248,113,113,0.3)",
+        color: "#f87171",
+        borderRadius: 7,
+        padding: "4px 8px",
+        fontSize: 11,
+        cursor: "pointer",
+        marginLeft: 8,
+        flexShrink: 0
+      }
+    }, "🗑️")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        marginBottom: !istVergangen && !ichBinEingetragen && !beideBesetzt ? 10 : 0
+      }
+    }, [{
+      label: "Zeitnehmer 1",
+      slot: "zeitnehmer1",
+      name: t.zeitnehmer1,
+      ichBin: ichBinZN1
+    }, {
+      label: "Zeitnehmer 2",
+      slot: "zeitnehmer2",
+      name: t.zeitnehmer2,
+      ichBin: ichBinZN2
+    }].map(({
+      label,
+      slot,
+      name,
+      ichBin
+    }) => /*#__PURE__*/React.createElement("div", {
+      key: slot,
+      style: {
+        flex: 1,
+        padding: "10px",
+        borderRadius: 10,
+        background: name ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.03)",
+        border: `1px solid ${name ? "#4ade8030" : "#003070"}`,
+        textAlign: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        fontWeight: 700,
+        marginBottom: 4
+      }
+    }, label), name ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#4ade80"
+      }
+    }, "✅ ", name.split(" ")[0]), ichBin && !istVergangen && /*#__PURE__*/React.createElement("button", {
+      onClick: () => austragen(t, slot),
+      style: {
+        marginTop: 6,
+        padding: "3px 10px",
+        background: "rgba(248,113,113,0.15)",
+        border: "1px solid #f8717140",
+        color: "#f87171",
+        borderRadius: 8,
+        fontSize: 11,
+        cursor: "pointer"
+      }
+    }, "Austragen")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#475569"
+      }
+    }, "— frei —")))), !istVergangen && !ichBinEingetragen && !beideBesetzt && /*#__PURE__*/React.createElement("button", {
+      onClick: () => eintragen(t, slot1Frei ? "zeitnehmer1" : "zeitnehmer2"),
+      style: {
+        width: "100%",
+        padding: "10px",
+        background: "linear-gradient(135deg,#0066CC,#2288FF)",
+        border: "none",
+        borderRadius: 10,
+        color: "white",
+        fontWeight: 800,
+        fontSize: 13,
+        cursor: "pointer"
+      }
+    }, "⏱️ Ich mache Zeitnehmer!"), !istVergangen && ichBinEingetragen && /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        fontSize: 12,
+        color: "#4ade80",
+        fontWeight: 700,
+        padding: "6px 0"
+      }
+    }, "✅ Du bist als Zeitnehmer eingetragen"));
+  }));
+}
+
+
 // ── MANNSCHAFTSKASSE TAB ───────────────────────────────────
 function MannschaftsKasseTab({
   benutzer,
@@ -4008,10 +4459,13 @@ function MainApp({
   const [termine, setTermine] = useState([]);
   const [schwarzesBrett, setSchwarzBrett] = useState([]);
   const [mannschaftskasse, setMannschaftskasse] = useState([]);
-  const isAdmin = cu.rolle === "admin";
-  const isStrafenwart = cu.rolle === "strafenwart" || isAdmin;
-  const isEventorga = cu.rolle === "eventorga" || isAdmin;
-  const isKasse = cu.rolle === "kasse" || isAdmin;
+  const [zeitnahmeTermine, setZeitnahmeTermine] = useState([]);
+  const hasRolle = (r) => Array.isArray(cu.rollen) ? cu.rollen.includes(r) : cu.rolle === r;
+  const isAdmin = hasRolle("admin");
+  const isStrafenwart = hasRolle("strafenwart") || isAdmin;
+  const isEventorga = hasRolle("eventorga") || isAdmin;
+  const isKasse = hasRolle("kasse") || isAdmin;
+  const isZeitnahmeAdmin = hasRolle("zeitnahmeadmin") || isAdmin;
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -4054,7 +4508,7 @@ function MainApp({
     let n = 0;
     const done = () => {
       n++;
-      if (n >= 9) setLoading(false);
+      if (n >= 10) setLoading(false);
     };
     const u1 = col("eintraege").onSnapshot(s => {
       setEintraege(s.docs.map(d => ({
@@ -4120,7 +4574,11 @@ function MainApp({
       setMannschaftskasse(s.docs.map(d => ({id: d.id, ...d.data()})));
       done();
     });
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); };
+    const u10 = col("zeitnahme").onSnapshot(s => {
+      setZeitnahmeTermine(s.docs.map(d => ({id: d.id, ...d.data()})));
+      done();
+    });
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
@@ -4256,7 +4714,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ["zeitnahme", "⏱️", "Zeitnahme"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -6620,7 +7078,12 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "kasse" && isKasse && /*#__PURE__*/React.createElement(MannschaftsKasseTab, {
+  }), tab === "zeitnahme" && /*#__PURE__*/React.createElement(ZeitnahmeTab, {
+        benutzer: benutzer, cu: cu,
+        zeitnahmeTermine: zeitnahmeTermine,
+        toast: toast,
+        isZeitnahmeAdmin: isZeitnahmeAdmin
+      }), tab === "kasse" && isKasse && /*#__PURE__*/React.createElement(MannschaftsKasseTab, {
         benutzer: benutzer, spieler: spieler, mannschaftskasse: mannschaftskasse,
         cu: cu, isKasse: isKasse, toast: toast
       }), tab === "brett" && isEventorga && /*#__PURE__*/React.createElement("div", {
