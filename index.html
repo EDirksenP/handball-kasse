@@ -4584,7 +4584,8 @@ function MainApp({
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
   const [buchKat, setBuchKat] = useState("getraenk");
-  const [qrModal, setQrModal] = useState(null); // "getraenk" | "sonstiges"
+  const [qrModal, setQrModal] = useState(null);
+  const [menuOffen, setMenuOffen] = useState(false); // "getraenk" | "sonstiges"
   const [buchMannschaftTab, setBuchMannschaftTab] = useState("meine"); // "meine" | "sonstige"
   const [buchMannschaftWahl, setBuchMannschaftWahl] = useState(cu.mannschaft || "1. Herren");
   const buchArtikel = async (g, typ) => {
@@ -7099,48 +7100,60 @@ function MainApp({
     cu: cu,
     toast: toast,
     eintraege: eintraege,
-    strafenEintraege: strafenEintraege,
-    schwarzesBrett: schwarzesBrett
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "fixed",
-      bottom: 0,
-      left: "50%",
-      transform: "translateX(-50%)",
-      width: "100%",
-      maxWidth: 480,
-      background: "rgba(0,17,46,0.97)",
-      backdropFilter: "blur(20px)",
-      borderTop: "1px solid #003F8A",
-      display: "flex",
-      padding: "8px 0 20px",
-      zIndex: 20
-    }
-  }, navs.map(([key, emoji, label]) => /*#__PURE__*/React.createElement("button", {
-    key: key,
-    onClick: () => setTab(key),
-    style: {
-      flex: 1,
-      background: "none",
-      border: "none",
-      color: tab === key ? "#2288FF" : "#475569",
-      cursor: "pointer",
-      padding: "6px 0",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 3
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 18
-    }
-  }, emoji), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: tab === key ? 700 : 400
-    }
-  }, label)))), qrModal && /*#__PURE__*/React.createElement("div", {
+    strafenEintraege: strafenEintraege
+  })), /*#__PURE__*/React.createElement("div", null,
+    /*#__PURE__*/React.createElement("div", {
+      style: {position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(0,17,46,0.97)",backdropFilter:"blur(20px)",borderTop:"1px solid #003F8A",padding:"12px 20px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",zIndex:50}
+    },
+      /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},onClick:()=>setTab("konto")},
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:22,opacity:tab==="konto"?1:0.5}}, "👤"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:tab==="konto"?700:400,color:tab==="konto"?"#2288FF":"#64748b"}}, "Mein Konto")
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},onClick:()=>setTab("buchen")},
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:22,opacity:tab==="buchen"?1:0.5}}, "⚡"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:tab==="buchen"?700:400,color:tab==="buchen"?"#2288FF":"#64748b"}}, "Buchen")
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},onClick:()=>setTab("übersicht")},
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:22,opacity:tab==="übersicht"?1:0.5}}, "📊"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:tab==="übersicht"?700:400,color:tab==="übersicht"?"#2288FF":"#64748b"}}, "Übersicht")
+      ),
+      /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},onClick:()=>setTab("termine")},
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:22,opacity:tab==="termine"?1:0.5}}, "📅"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:tab==="termine"?700:400,color:tab==="termine"?"#2288FF":"#64748b"}}, "Termine")
+      ),
+      /*#__PURE__*/React.createElement("div", {
+        style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},
+        onClick:()=>setMenuOffen(v=>!v)
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:22,opacity:menuOffen?1:0.6}}, menuOffen?"✕":"☰"),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:9,fontWeight:menuOffen?700:400,color:menuOffen?"#2288FF":"#64748b"}}, "Mehr")
+      )
+    ),
+    menuOffen && /*#__PURE__*/React.createElement("div", {
+      onClick:()=>setMenuOffen(false),
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:49}
+    }),
+    /*#__PURE__*/React.createElement("div", {
+      style:{position:"fixed",bottom:0,left:"50%",transform:`translateX(-50%) translateY(${menuOffen?0:100}%)`,transition:"transform 0.3s ease",width:"100%",maxWidth:480,background:"rgba(0,11,30,0.98)",backdropFilter:"blur(20px)",borderTop:"2px solid #003F8A",borderRadius:"20px 20px 0 0",padding:"16px 0 100px",zIndex:50,maxHeight:"80vh",overflowY:"auto"}
+    },
+      /*#__PURE__*/React.createElement("div", {style:{textAlign:"center",marginBottom:16}},
+        /*#__PURE__*/React.createElement("div", {style:{width:40,height:4,background:"#003F8A",borderRadius:2,margin:"0 auto 12px"}}, null),
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#64748b",fontWeight:700,letterSpacing:1}}, "NAVIGATION")
+      ),
+      navs.map(([key, emoji, label]) => /*#__PURE__*/React.createElement("div", {
+        key,
+        onClick:()=>{setTab(key);setMenuOffen(false);},
+        style:{display:"flex",alignItems:"center",gap:14,padding:"14px 24px",cursor:"pointer",background:tab===key?"rgba(34,136,255,0.1)":"transparent",borderLeft:tab===key?"3px solid #2288FF":"3px solid transparent",transition:"background 0.15s"}
+      },
+        /*#__PURE__*/React.createElement("div", {style:{fontSize:24,width:32,textAlign:"center"}}, emoji),
+        /*#__PURE__*/React.createElement("div", null,
+          /*#__PURE__*/React.createElement("div", {style:{fontSize:14,fontWeight:tab===key?700:500,color:tab===key?"#2288FF":"#e2e8f0"}}, label),
+          tab===key && /*#__PURE__*/React.createElement("div", {style:{fontSize:10,color:"#2288FF"}}, "Aktiv")
+        ),
+        tab===key && /*#__PURE__*/React.createElement("div", {style:{marginLeft:"auto",color:"#2288FF",fontWeight:900}}, "›")
+      ))
+    )
+  ), qrModal && /*#__PURE__*/React.createElement("div", {
     onClick: () => setQrModal(null),
     style: {position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}
   }, /*#__PURE__*/React.createElement("div", {
