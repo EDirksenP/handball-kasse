@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3.Herren HSG Emden</title>
+  <title>3. Herren HSG Emden</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -136,6 +136,8 @@ function Login({
   const [err, setErr] = useState("");
   const [shake, setShake] = useState(false);
   const [zeigeImpressum, setZeigeImpressum] = useState(false);
+  const [datenschutzOk, setDatenschutzOk] = useState(false);
+  const [zeigeDatenschutz, setZeigeDatenschutz] = useState(!localStorage.getItem("dsgvo_ok"));
   const go = () => {
     const b = benutzer.find(x => x.benutzername === u.trim().toLowerCase());
     if (!b) {
@@ -283,7 +285,22 @@ function Login({
       textDecoration: "underline",
       cursor: "pointer"
     }
-  }, "Impressum & Kontakt"), zeigeImpressum && /*#__PURE__*/React.createElement("div", {
+  }, "Impressum & Kontakt"), zeigeDatenschutz && /*#__PURE__*/React.createElement("div", {
+    style: {position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:20}
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {background:"#001A3A",border:"2px solid #2288FF",borderRadius:16,padding:24,width:"100%",maxWidth:400}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:16,fontWeight:800,marginBottom:10}}, "🔒 Datenschutzhinweis"),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#94a3b8",marginBottom:16,lineHeight:1.6}},
+      "Diese App speichert Vereinsdaten (Namen, Buchungen, Termine) in einer verschlüsselten Firebase-Datenbank. ",
+      "Die Daten werden ausschließlich für den Vereinsbetrieb genutzt und nicht an Dritte weitergegeben. ",
+      "Durch die Nutzung stimmst du der Verarbeitung deiner Daten gemäß DSGVO zu."
+    ),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => { localStorage.setItem("dsgvo_ok","1"); setZeigeDatenschutz(false); },
+      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontWeight:800,fontSize:14,cursor:"pointer"}
+    }, "✅ Verstanden & Zustimmen")
+  )), zeigeImpressum && /*#__PURE__*/React.createElement("div", {
     onClick: () => setZeigeImpressum(false),
     style: {
       position: "fixed",
@@ -355,6 +372,7 @@ function BenutzerTab({
   cu,
   toast,
   eintraege,
+  strafenEintraege,
   schwarzesBrett
 }) {
   const [form, setForm] = useState({
@@ -450,6 +468,110 @@ function BenutzerTab({
     win.document.write(html);
     win.document.close();
     setTimeout(()=>win.print(),500);
+  };
+
+  const [berichtJahr, setBerichtJahr] = useState(new Date().getFullYear());
+
+  const erstelleJahresbericht = () => {
+    const jahr = berichtJahr;
+    const monate = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+    const eintraege_jahr = eintraege.filter(e => e.datumRaw && e.datumRaw.startsWith(jahr+""));
+    const ein = eintraege_jahr.filter(e=>e.typ==="einnahme").reduce((s,e)=>s+e.betrag,0);
+    const aus = eintraege_jahr.filter(e=>e.typ==="ausgabe").reduce((s,e)=>s+e.betrag,0);
+    const getr = eintraege_jahr.filter(e=>e.typ==="getraenk").reduce((s,e)=>s+e.betrag,0);
+    const sonst = eintraege_jahr.filter(e=>e.typ==="sonstiges").reduce((s,e)=>s+e.betrag,0);
+    const spende = eintraege_jahr.filter(e=>e.typ==="spende").reduce((s,e)=>s+e.betrag,0);
+    const strafenBez = strafenEintraege.filter(e => e.bezahlt).reduce((s,e)=>s+(e.betrag||0),0);
+    const strafenBezJahr = strafenEintraege.filter(e => e.bezahlt && e.datum && e.datum.includes(String(jahr))).reduce((s,e)=>s+(e.betrag||0),0);
+    const bilanz = ein + getr + sonst + spende + strafenBezJahr - aus;
+    const monatsData = monate.map((name,i) => {
+      const key = jahr+"-"+String(i+1).padStart(2,"0");
+      const me = eintraege.filter(e=>e.datumRaw&&e.datumRaw.startsWith(key));
+      const monatsStr = String(i+1).padStart(2,"0");
+      const strafenMonat = strafenEintraege.filter(e => e.bezahlt && e.datum && e.datum.includes(jahr+".") && e.datum.split(".")[1]===monatsStr).reduce((s,e)=>s+(e.betrag||0),0);
+      return {
+        name, key,
+        getraenk: me.filter(e=>e.typ==="getraenk").reduce((s,e)=>s+e.betrag,0),
+        sonstiges: me.filter(e=>e.typ==="sonstiges").reduce((s,e)=>s+e.betrag,0),
+        einnahme: me.filter(e=>e.typ==="einnahme").reduce((s,e)=>s+e.betrag,0),
+        ausgabe: me.filter(e=>e.typ==="ausgabe").reduce((s,e)=>s+e.betrag,0),
+        spende: me.filter(e=>e.typ==="spende").reduce((s,e)=>s+e.betrag,0),
+        strafen: strafenMonat,
+      };
+    }).filter(m=>m.getraenk+m.sonstiges+m.einnahme+m.ausgabe+m.spende>0);
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Jahresbericht ${jahr}</title>
+<style>
+body{font-family:Arial,sans-serif;margin:30px;color:#111}
+.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:24px}
+.header h1{color:#003F8A;font-size:24px;margin:0 0 4px 0}
+.header h2{font-size:15px;color:#555;margin:0;font-weight:normal}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.card{background:#f4f7fb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #003F8A}
+.card.green{border-left-color:#16a34a}.card.red{border-left-color:#dc2626}.card.blue{border-left-color:#2563eb}
+.card-label{font-size:11px;color:#666;margin-bottom:4px}
+.card-value{font-size:20px;font-weight:900;color:#111}
+.card.green .card-value{color:#16a34a}.card.red .card-value{color:#dc2626}
+.bilanz{background:#003F8A;color:white;border-radius:10px;padding:16px;text-align:center;margin-bottom:24px}
+.bilanz-label{font-size:13px;opacity:0.8}
+.bilanz-value{font-size:28px;font-weight:900;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th{background:#003F8A;color:white;padding:9px 10px;text-align:right;font-size:12px}
+th:first-child{text-align:left}
+td{padding:8px 10px;border-bottom:1px solid #e0e0e0;font-size:12px;text-align:right}
+td:first-child{text-align:left;font-weight:600}
+tr:nth-child(even) td{background:#f9fafb}
+tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
+.footer{margin-top:24px;font-size:10px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px}
+</style>
+</head><body>
+<div class="header">
+  <h1>🤾 3. Herren HSG Emden</h1>
+  <h2>Jahresabschlussbericht ${jahr}</h2>
+</div>
+<div class="summary">
+  <div class="card green"><div class="card-label">💰 Einnahmen gesamt</div><div class="card-value">+${(ein+getr+sonst+spende+strafenBezJahr).toFixed(2)} €</div></div>
+  <div class="card red"><div class="card-label">🛍️ Ausgaben gesamt</div><div class="card-value">-${aus.toFixed(2)} €</div></div>
+  <div class="card blue"><div class="card-label">🥤 Getränke</div><div class="card-value">${getr.toFixed(2)} €</div></div>
+  <div class="card green"><div class="card-label">⚖️ Strafen (bezahlt)</div><div class="card-value">+${strafenBezJahr.toFixed(2)} €</div></div>
+</div>
+<div class="bilanz">
+  <div class="bilanz-label">Jahresbilanz ${jahr}</div>
+  <div class="bilanz-value">${bilanz>=0?"+":""}${bilanz.toFixed(2)} €</div>
+</div>
+<table>
+  <thead><tr><th>Monat</th><th>Getränke</th><th>Sonstiges</th><th>Einnahmen</th><th>Ausgaben</th><th>Spenden</th><th>Strafen</th><th>Bilanz</th></tr></thead>
+  <tbody>
+  ${monatsData.map(m=>{
+    const bil=(m.getraenk+m.sonstiges+m.einnahme+m.spende+(m.strafen||0))-m.ausgabe;
+    return `<tr>
+      <td>${m.name}</td>
+      <td>${m.getraenk>0?m.getraenk.toFixed(2)+" €":"-"}</td>
+      <td>${m.sonstiges>0?m.sonstiges.toFixed(2)+" €":"-"}</td>
+      <td>${m.einnahme>0?m.einnahme.toFixed(2)+" €":"-"}</td>
+      <td>${m.ausgabe>0?"-"+m.ausgabe.toFixed(2)+" €":"-"}</td>
+      <td>${m.spende>0?m.spende.toFixed(2)+" €":"-"}</td>
+      <td>${m.strafen>0?"+"+m.strafen.toFixed(2)+" €":"-"}</td>
+      <td style="color:${bil>=0?"#16a34a":"#dc2626"};font-weight:700">${bil>=0?"+":""}${bil.toFixed(2)} €</td>
+    </tr>`;
+  }).join("")}
+  </tbody>
+  <tfoot><tr>
+    <td>Gesamt</td>
+    <td>${getr.toFixed(2)} €</td>
+    <td>${sonst.toFixed(2)} €</td>
+    <td>${ein.toFixed(2)} €</td>
+    <td>-${aus.toFixed(2)} €</td>
+    <td>${spende.toFixed(2)} €</td>
+    <td>+${strafenBezJahr.toFixed(2)} €</td>
+    <td style="color:${bilanz>=0?"#16a34a":"#dc2626"}">${bilanz>=0?"+":""}${bilanz.toFixed(2)} €</td>
+  </tr></tfoot>
+</table>
+<div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App · ${eintraege_jahr.length} Buchungen im Jahr ${jahr}</div>
+</body></html>`;
+    const win = window.open("","_blank");
+    win.document.write(html);
+    win.document.close();
+    setTimeout(()=>win.print(),600);
   };
 
   const saveEdit = async () => {
@@ -837,6 +959,20 @@ function BenutzerTab({
       onClick: erstelleMitgliederliste,
       style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#0066CC,#2288FF)",border:"none",borderRadius:12,color:"white",fontSize:14,fontWeight:800,cursor:"pointer"}
     }, "📄 Mitgliederliste erstellen")
+  ), /*#__PURE__*/React.createElement("div", {
+    style: {background:"rgba(251,191,36,0.06)",border:"1px solid #fbbf2433",borderRadius:14,padding:16,marginBottom:20}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#fbbf24",fontWeight:700,marginBottom:8}}, "📊 Jahresabschlussbericht"),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erstellt eine vollständige Jahresübersicht mit Monatsaufschlüsselung als PDF."),
+    /*#__PURE__*/React.createElement("select", {
+      value: berichtJahr,
+      onChange: e => setBerichtJahr(parseInt(e.target.value)),
+      style: {...IS, marginTop:0, marginBottom:10}
+    }, [2024,2025,2026,2027,2028].map(y => /*#__PURE__*/React.createElement("option", {key:y, value:y}, y, " — Jahresbericht"))),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: erstelleJahresbericht,
+      style: {width:"100%",padding:"12px",background:"linear-gradient(135deg,#92400e,#fbbf24)",border:"none",borderRadius:12,color:"#1a1a1a",fontSize:14,fontWeight:800,cursor:"pointer"}
+    }, "📊 Jahresbericht erstellen")
   ), /*#__PURE__*/React.createElement(SchwarzeBrettVerwaltung, {
     schwarzesBrett: schwarzesBrett || [],
     cu: cu,
@@ -3537,6 +3673,15 @@ function MainApp({
       }
     }, "🎉"));
   })(), /*#__PURE__*/React.createElement("div", {
+    id: "hs-banner",
+    style: {background:"linear-gradient(135deg,#1e3a5f,#003F8A)",borderBottom:"1px solid #0055AA",padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#93c5fd"}}, "📱 Tipp: App zum Homescreen hinzufügen für schnellen Zugriff!"),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => { const b=document.getElementById("hs-banner"); if(b) b.style.display="none"; },
+      style: {background:"none",border:"1px solid #2288FF44",color:"#60a5fa",borderRadius:8,padding:"4px 10px",fontSize:11,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}
+    }, "✕ OK")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       paddingBottom: 95
     }
@@ -5771,6 +5916,7 @@ function MainApp({
     cu: cu,
     toast: toast,
     eintraege: eintraege,
+    strafenEintraege: strafenEintraege,
     schwarzesBrett: schwarzesBrett
   })), /*#__PURE__*/React.createElement("div", {
     style: {
