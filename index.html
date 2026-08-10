@@ -17,6 +17,7 @@
     ::-webkit-scrollbar-thumb{background:#003070;border-radius:2px;}
     @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -3071,6 +3072,10 @@ function SonstigesTab({
       fontWeight: 800
     }
   }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setQrModal(g),
+    title: "QR-Code anzeigen",
+    style: {background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}
+  }, "⬛"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEditSon(g),
     style: {
       background: "rgba(34,136,255,0.1)",
@@ -3261,8 +3266,28 @@ function MainApp({
   const [sonstiges, setSonstiges] = useState([]);
   const [benutzer, setBenutzer] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("konto");
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("buche") ? "buchen" : "konto";
+  });
+  const [vorgewaehlterArtikel, setVorgewaehlterArtikel] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("buche") || null;
+  });
   const [toastMsg, setToastMsg] = useState(null);
+  useEffect(() => {
+    if(vorgewaehlterArtikel && (getraenke.length > 0 || sonstiges.length > 0)) {
+      const g = getraenke.find(x => x.id === vorgewaehlterArtikel) || sonstiges.find(x => x.id === vorgewaehlterArtikel);
+      if(g) {
+        setTab("buchen");
+        if(sonstiges.find(x => x.id === vorgewaehlterArtikel)) setBuchKat("sonstiges");
+        else setBuchKat("getraenk");
+        const meinSp = spieler.find(s => s.name === cu.vorname + " " + cu.nachname);
+        if(meinSp) setGwS(meinSp.id);
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    }
+  }, [vorgewaehlterArtikel, getraenke, sonstiges, spieler]);
   const [gwS, setGwS] = useState(null);
   const [datum, setDatum] = useState(todayStr());
   const [zahlart, setZahlart] = useState("direkt");
@@ -3413,7 +3438,8 @@ function MainApp({
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
-  const [buchKat, setBuchKat] = useState("getraenk"); // "getraenk" | "sonstiges"
+  const [buchKat, setBuchKat] = useState("getraenk");
+  const [qrModal, setQrModal] = useState(null); // "getraenk" | "sonstiges"
   const [buchMannschaftTab, setBuchMannschaftTab] = useState("meine"); // "meine" | "sonstige"
   const [buchMannschaftWahl, setBuchMannschaftWahl] = useState(cu.mannschaft || "1. Herren");
   const buchArtikel = async (g, typ) => {
@@ -5866,6 +5892,10 @@ function MainApp({
       fontWeight: 800
     }
   }, g.preis.toFixed(2), " €"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setQrModal(g),
+    title: "QR-Code anzeigen",
+    style: {background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.3)",color:"#a78bfa",borderRadius:7,padding:"4px 9px",fontSize:12,cursor:"pointer"}
+  }, "⬛"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEditG(g),
     style: {
       background: "rgba(34,136,255,0.1)",
@@ -5957,7 +5987,58 @@ function MainApp({
       fontSize: 9,
       fontWeight: tab === key ? 700 : 400
     }
-  }, label)))), toastMsg && /*#__PURE__*/React.createElement("div", {
+  }, label)))), qrModal && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setQrModal(null),
+    style: {position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}
+  }, /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {background:"#001A3A",border:"2px solid #a78bfa",borderRadius:16,padding:24,width:"100%",maxWidth:320,textAlign:"center"}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:16,fontWeight:800,marginBottom:4}}, qrModal && qrModal.emoji, " ", qrModal && qrModal.name),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:13,color:"#a78bfa",fontWeight:700,marginBottom:16}}, qrModal && qrModal.preis.toFixed(2), " €"),
+    /*#__PURE__*/React.createElement("div", {
+      id: "qr-container",
+      ref: el => {
+        if(el && qrModal && typeof QRCode !== "undefined") {
+          el.innerHTML = "";
+          new QRCode(el, {
+            text: "https://3hsg-emden-kasse.de?buche=" + qrModal.id,
+            width: 200, height: 200,
+            colorDark: "#000000", colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }
+      },
+      style: {display:"flex",justifyContent:"center",marginBottom:16,background:"white",padding:10,borderRadius:8}
+    }),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#64748b",marginBottom:14}}, "Scannen → App öffnet direkt den Buchen-Tab"),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        const canvas = document.querySelector("#qr-container canvas");
+        if(!canvas) return;
+        const link = document.createElement("a");
+        link.download = (qrModal ? qrModal.name : "qrcode").replace(/\s+/g,"_") + "_QR.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      },
+      style: {width:"100%",padding:"11px",background:"rgba(74,222,128,0.15)",border:"1px solid #4ade80",borderRadius:10,color:"#4ade80",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:8}
+    }, "⬇️ PNG herunterladen (für Dymo)"),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        if(!qrModal) return;
+        const url = "https://3hsg-emden-kasse.de?buche=" + qrModal.id;
+        const win = window.open("","_blank");
+        win.document.write("<!DOCTYPE html><html><head><title>QR "+qrModal.name+"</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>"+qrModal.emoji+" "+qrModal.name+" — "+qrModal.preis.toFixed(2)+" €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>"+url+"</p><script>new QRCode(document.getElementById('qr'),{text:'"+url+"',width:300,height:300});<\/script></body></html>");
+        win.document.close();
+        setTimeout(()=>win.print(),800);
+      },
+      style: {width:"100%",padding:"11px",background:"linear-gradient(135deg,#6d28d9,#a78bfa)",border:"none",borderRadius:10,color:"white",fontWeight:800,fontSize:13,cursor:"pointer",marginBottom:8}
+    }, "🖨️ QR-Code drucken"),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: () => setQrModal(null),
+      style: {width:"100%",padding:"10px",background:"rgba(255,255,255,0.05)",border:"1px solid #003070",color:"#94a3b8",borderRadius:10,cursor:"pointer",fontSize:13}
+    }, "Schließen")
+  )), toastMsg && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
       top: 70,
