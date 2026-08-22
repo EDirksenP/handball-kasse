@@ -7277,15 +7277,7 @@ function App() {
         id: d.id,
         ...d.data()
       }));
-      if (list.length === 0) col("benutzer").add({
-        vorname: "Admin",
-        nachname: "HSG",
-        benutzername: "admin.hsg",
-        passwort: "hsgherren33",
-        rolle: "admin",
-        mannschaft: "1. Herren",
-        guthaben: 0
-      });
+      
       setBenutzer(list);
       setLoading(false);
     });
