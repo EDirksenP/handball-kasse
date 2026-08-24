@@ -2324,10 +2324,12 @@ function TermineTab({
           return {
             vorname: bu?.vorname || name.split(" ")[0],
             nachname: bu?.nachname || name.split(" ").slice(1).join(" "),
-            handballId: bu?.handballId || "—",
+            trikotnummer: bu?.trikotnummer || "",
+            position: bu?.position || "",
+            handballId: bu?.handballId || "",
             status: zusagen.includes(name) ? "✅" : "❓"
           };
-        });
+        }).sort((a,b) => (parseInt(a.trikotnummer)||999)-(parseInt(b.trikotnummer)||999));
         const datum = new Date(t.datum + "T12:00:00");
         const datumStr = datum.toLocaleDateString("de-DE", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
         const html = `<!DOCTYPE html>
@@ -2373,8 +2375,10 @@ function TermineTab({
   <thead>
     <tr>
       <th>#</th>
+      <th>Trikot</th>
       <th>Vorname</th>
       <th>Nachname</th>
+      <th>Position</th>
       <th>Handball-ID</th>
       <th>Status</th>
     </tr>
@@ -2383,8 +2387,10 @@ function TermineTab({
     ${spielerMitId.map((sp, i) => `
     <tr>
       <td>${i + 1}</td>
+      <td>${sp.trikotnummer}</td>
       <td>${sp.vorname}</td>
       <td>${sp.nachname}</td>
+      <td>${sp.position}</td>
       <td><strong>${sp.handballId}</strong></td>
       <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
     </tr>`).join("")}
