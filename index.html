@@ -483,13 +483,17 @@ function BenutzerTab({
     const sonst = eintraege_jahr.filter(e=>e.typ==="sonstiges").reduce((s,e)=>s+e.betrag,0);
     const spende = eintraege_jahr.filter(e=>e.typ==="spende").reduce((s,e)=>s+e.betrag,0);
     const strafenBez = strafenEintraege.filter(e => e.bezahlt).reduce((s,e)=>s+(e.betrag||0),0);
-    const strafenBezJahr = strafenEintraege.filter(e => e.bezahlt && e.datum && e.datum.includes(String(jahr))).reduce((s,e)=>s+(e.betrag||0),0);
+    const strafenBezJahr = strafenEintraege.filter(e => e.bezahlt && (e.bezahltDatum ? e.bezahltDatum.startsWith(String(jahr)) : (e.datum && e.datum.includes(String(jahr))))).reduce((s,e)=>s+(e.betrag||0),0);
     const bilanz = ein + getr + sonst + spende + strafenBezJahr - aus;
     const monatsData = monate.map((name,i) => {
       const key = jahr+"-"+String(i+1).padStart(2,"0");
       const me = eintraege.filter(e=>e.datumRaw&&e.datumRaw.startsWith(key));
       const monatsStr = String(i+1).padStart(2,"0");
-      const strafenMonat = strafenEintraege.filter(e => e.bezahlt && e.datum && e.datum.includes(jahr+".") && e.datum.split(".")[1]===monatsStr).reduce((s,e)=>s+(e.betrag||0),0);
+      const strafenMonat = strafenEintraege.filter(e => {
+        if(!e.bezahlt) return false;
+        if(e.bezahltDatum) return e.bezahltDatum.startsWith(jahr+"-"+monatsStr);
+        return e.datum && e.datum.includes(jahr+".") && e.datum.split(".")[1]===monatsStr;
+      }).reduce((s,e)=>s+(e.betrag||0),0);
       return {
         name, key,
         getraenk: me.filter(e=>e.typ==="getraenk").reduce((s,e)=>s+e.betrag,0),
@@ -1339,7 +1343,9 @@ function StrafenTab({
   };
   const bestaetigen = async e => {
     await ref("strafen", e.id).update({
-      bezahlt: true
+      bezahlt: true,
+      bezahltAm: new Date().toLocaleDateString("de-DE"),
+      bezahltDatum: new Date().toISOString().slice(0,10)
     });
     toast(`✅ Zahlung von ${e.person} bestätigt!`);
   };
@@ -1347,7 +1353,7 @@ function StrafenTab({
     const bu = benutzer.find(b => b.vorname + " " + b.nachname === e.person);
     if(!bu) return toast("⚠️ Benutzer nicht gefunden!");
     if((bu.guthaben||0) < e.betrag) return toast("⚠️ Nicht genug Guthaben!");
-    await ref("strafen", e.id).update({bezahlt: true, zahlart: "guthaben"});
+    await ref("strafen", e.id).update({bezahlt: true, zahlart: "guthaben", bezahltAm: new Date().toLocaleDateString("de-DE"), bezahltDatum: new Date().toISOString().slice(0,10)});
     await ref("benutzer", bu.id).update({guthaben: Math.round(((bu.guthaben||0) - e.betrag) * 100) / 100});
     toast(`✅ ${e.betrag.toFixed(2)} € vom Guthaben von ${e.person} abgezogen!`);
   };
@@ -1790,7 +1796,7 @@ function StrafenTab({
         marginTop: 2,
         fontWeight: ueberfaellig ? 700 : 400
       }
-    }, "📅 ", e.datum, " • ", e.zeit, " • ", e.bezahlt ? "✅ Bezahlt" : ueberfaellig ? "⚠️ Überfällig (>14 Tage)" : "⏳ Offen")), /*#__PURE__*/React.createElement("div", {
+    }, "📅 ", e.datum, " • ", e.zeit, " • ", e.bezahlt ? "✅ Bezahlt" + (e.bezahltAm ? " am " + e.bezahltAm : "") + (e.zahlart === "guthaben" ? " (💰 Guthaben)" : "") : ueberfaellig ? "⚠️ Überfällig (>14 Tage)" : "⏳ Offen")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         flexDirection: "column",
@@ -4728,7 +4734,7 @@ function MainApp({
   const spe = eintraege.filter(e => e.typ === "spende").reduce((s, e) => s + e.betrag, 0);
   const gSum = eintraege.filter(e => e.typ === "getraenk").reduce((s, e) => s + e.betrag, 0);
   const sSum = eintraege.filter(e => e.typ === "sonstiges").reduce((s, e) => s + e.betrag, 0);
-  const strafenBezahlt = strafenEintraege.filter(e => e.bezahlt && e.zahlart !== "guthaben").reduce((s,e) => s+(e.betrag||0), 0);
+  const strafenBezahlt = strafenEintraege.filter(e => e.bezahlt).reduce((s,e) => s+(e.betrag||0), 0);
   const kasse = ein + spe + gSum + sSum - aus + strafenBezahlt;
   const sortE = [...eintraege].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const verl = sortE.filter(e => vF === "alle" || e.typ === vF).filter(e => vS === "alle" || e.spielerId === vS).filter(e => {
@@ -6297,7 +6303,7 @@ function MainApp({
       const bu = benutzer.find(b => b.vorname + " " + b.nachname === sp.name);
       return bu && (bu.mannschaft || "1. Herren") === meineMannschaftUebersicht;
     }).map(sp => sp.id));
-    const strafenBezahltSumme = strafenEintraege.filter(e => e.bezahlt && e.zahlart !== "guthaben" && eigeneSpielerIdsUebersicht.has(e.spielerId)).reduce((s, e) => s + e.betrag, 0);
+    const strafenBezahltSumme = strafenEintraege.filter(e => e.bezahlt && eigeneSpielerIdsUebersicht.has(e.spielerId)).reduce((s, e) => s + e.betrag, 0);
     const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaftUebersicht && b.rolle !== "admin");
     const guthabenSumme = eigeneBenutzer.reduce((s, b) => s + (b.guthaben || 0), 0);
     const guthabenAnzahl = eigeneBenutzer.filter(b => (b.guthaben || 0) > 0).length;
