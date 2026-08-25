@@ -964,6 +964,29 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       cursor: "pointer"
     }
   }, "📥 Sicherung herunterladen (", eintraege ? eintraege.length : 0, " Buchungen)")), /*#__PURE__*/React.createElement("div", {
+    style: {background:"rgba(251,191,36,0.06)",border:"1px solid #fbbf2433",borderRadius:12,padding:14,marginBottom:16}
+  },
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#fbbf24",fontWeight:700,marginBottom:6}}, "🔧 Einmalige Migration"),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginBottom:10}}, "Trägt bezahltDatum 01.07.2026 bei allen bezahlten Strafen ohne Datum nach."),
+    /*#__PURE__*/React.createElement("button", {
+      onClick: async () => {
+        const snap = await col("strafen").where("bezahlt","==",true).get();
+        let count = 0;
+        for(const doc of snap.docs) {
+          const d = doc.data();
+          if(!d.bezahltDatum) {
+            await ref("strafen", doc.id).update({
+              bezahltDatum: "2026-07-01",
+              bezahltAm: d.bezahltAm || "01.07.2026"
+            });
+            count++;
+          }
+        }
+        toast(`✅ ${count} Strafen mit Datum 02.08.2026 versehen!`);
+      },
+      style: {width:"100%",padding:"10px",background:"linear-gradient(135deg,#92400e,#fbbf24)",border:"none",borderRadius:10,color:"#1a1a1a",fontWeight:800,fontSize:13,cursor:"pointer"}
+    }, "🔧 Bezahltdatum nachtragen (Juli 2026)")
+  ), /*#__PURE__*/React.createElement("div", {
     style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
   },
     /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:8}}, "📋 Mitgliederliste als PDF"),
