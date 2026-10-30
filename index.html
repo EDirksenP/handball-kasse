@@ -1904,6 +1904,24 @@ function TermineTab({
   const [offenAdminVote, setOffenAdminVote] = useState(null);
   const [vielleichtModal, setVielleichtModal] = useState(null); // {terminId, spielerName}
   const [vielleichtGrund, setVielleichtGrund] = useState("");
+  const [gastInputs, setGastInputs] = useState({});
+  const setGastFeld = (id, feld, wert) => setGastInputs(g => ({
+    ...g,
+    [id]: {...(g[id] || {name: "", trikotnummer: "", handballId: ""}), [feld]: wert}
+  }));
+  const addGast = async t => {
+    const gi = gastInputs[t.id] || {};
+    const name = (gi.name || "").trim();
+    if (!name) return toast("⚠️ Bitte einen Namen eingeben!");
+    const neu = {name, trikotnummer: (gi.trikotnummer || "").trim(), handballId: (gi.handballId || "").trim()};
+    await ref("termine", t.id).update({gastspieler: [...(t.gastspieler || []), neu]});
+    setGastInputs(g => ({...g, [t.id]: {name: "", trikotnummer: "", handballId: ""}}));
+    toast("✅ Gastspieler hinzugefügt!");
+  };
+  const delGast = async (t, idx) => {
+    await ref("termine", t.id).update({gastspieler: (t.gastspieler || []).filter((_, i) => i !== idx)});
+    toast("🗑️ Gastspieler entfernt");
+  };
 
   // Nur Termine der eigenen Mannschaft
   const meineMannschaft = cu.mannschaft || "1. Herren";
@@ -2315,7 +2333,49 @@ function TermineTab({
         fontSize: 11,
         color: "#fb923c"
       }
-    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), kannBearbeiten && /*#__PURE__*/React.createElement("button", {
+    }, /*#__PURE__*/React.createElement("span", null, "⏳"), " ", nichtAbgestimmt.map(sp => sp.name).join(", ")), t.typ === "punktspiel" ? (() => {
+      const gi = gastInputs[t.id] || {name: "", trikotnummer: "", handballId: ""};
+      const gaeste = t.gastspieler || [];
+      if (gaeste.length === 0 && !kannBearbeiten) return null;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)"}
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 11, color: "#60a5fa", fontWeight: 700, marginBottom: 6}
+      }, "🧑 GASTSPIELER", gaeste.length > 0 ? " (" + gaeste.length + ")" : ""), gaeste.map((g, idx) => /*#__PURE__*/React.createElement("div", {
+        key: idx,
+        style: {display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12, color: "#cbd5e1"}
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {flex: 1}
+      }, g.name, g.trikotnummer ? " · #" + g.trikotnummer : "", g.handballId ? " · " + g.handballId : ""), kannBearbeiten ? /*#__PURE__*/React.createElement("button", {
+        onClick: () => delGast(t, idx),
+        style: {background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#f87171", borderRadius: 7, padding: "2px 8px", fontSize: 11, cursor: "pointer"}
+      }, "✕") : null)), kannBearbeiten ? /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 6}
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        placeholder: "Name des Gastspielers (Pflicht)",
+        value: gi.name,
+        onChange: e => setGastFeld(t.id, "name", e.target.value),
+        style: {...IS, marginTop: 0, marginBottom: 6}
+      }), /*#__PURE__*/React.createElement("div", {
+        style: {display: "flex", gap: 6}
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        placeholder: "Trikot",
+        value: gi.trikotnummer,
+        onChange: e => setGastFeld(t.id, "trikotnummer", e.target.value),
+        style: {...IS, marginTop: 0, flex: 1}
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        placeholder: "Handball-ID",
+        value: gi.handballId,
+        onChange: e => setGastFeld(t.id, "handballId", e.target.value),
+        style: {...IS, marginTop: 0, flex: 2}
+      }), /*#__PURE__*/React.createElement("button", {
+        onClick: () => addGast(t),
+        style: {padding: "0 14px", background: "linear-gradient(135deg,#0066CC,#2288FF)", border: "none", borderRadius: 12, color: "white", fontWeight: 800, fontSize: 18, cursor: "pointer", flexShrink: 0}
+      }, "+"))) : null);
+    })() : null, kannBearbeiten && /*#__PURE__*/React.createElement("button", {
       onClick: async () => {
         const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
         const datum = new Date(t.datum + "T12:00:00");
@@ -2374,6 +2434,18 @@ function TermineTab({
             status: zusagen.includes(name) ? "✅" : "❓"
           };
         }).sort((a,b) => (parseInt(a.trikotnummer)||999)-(parseInt(b.trikotnummer)||999));
+        const gaeste = (t.gastspieler || []).map(g => {
+          const teile = (g.name || "").trim().split(" ");
+          return {
+            vorname: teile[0] || "",
+            nachname: teile.slice(1).join(" "),
+            trikotnummer: g.trikotnummer || "",
+            position: "",
+            handballId: g.handballId || "",
+            status: "Gast"
+          };
+        });
+        const alleZeilen = [...spielerMitId, ...gaeste].sort((a,b) => (parseInt(a.trikotnummer)||999)-(parseInt(b.trikotnummer)||999));
         const datum = new Date(t.datum + "T12:00:00");
         const datumStr = datum.toLocaleDateString("de-DE", {weekday:"long", year:"numeric", month:"long", day:"numeric"});
         const html = `<!DOCTYPE html>
@@ -2393,6 +2465,9 @@ function TermineTab({
   tr:nth-child(even) td { background: #f4f7fb; }
   .status-ok { color: #16a34a; font-weight: bold; }
   .status-vl { color: #d97706; font-weight: bold; }
+  .status-gast { color: #2563eb; font-weight: bold; }
+  th.check, td.check { text-align: center; width: 70px; }
+  .checkbox { display: inline-block; width: 18px; height: 18px; border: 2px solid #003F8A; border-radius: 3px; line-height: 16px; font-size: 14px; font-weight: bold; color: #003F8A; text-align: center; }
   .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }
   .badge { display: inline-block; background: #e8f0fe; color: #003F8A; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
 </style>
@@ -2413,7 +2488,9 @@ function TermineTab({
   &nbsp;
   <span class="badge" style="background:#fef3c7;color:#92400e;">❓ ${vielleicht.length} Vielleicht</span>
   &nbsp;
-  <strong>${alleSpieler.length} Spieler gesamt</strong>
+  <span class="badge" style="background:#dbeafe;color:#1e40af;">🧑 ${gaeste.length} Gäste</span>
+  &nbsp;
+  <strong>${alleSpieler.length + gaeste.length} Spieler gesamt</strong>
 </div>
 <table>
   <thead>
@@ -2425,10 +2502,12 @@ function TermineTab({
       <th>Position</th>
       <th>Handball-ID</th>
       <th>Status</th>
+      <th class="check">Feldspieler</th>
+      <th class="check">Torwart</th>
     </tr>
   </thead>
   <tbody>
-    ${spielerMitId.map((sp, i) => `
+    ${alleZeilen.map((sp, i) => `
     <tr>
       <td>${i + 1}</td>
       <td>${sp.trikotnummer}</td>
@@ -2436,7 +2515,9 @@ function TermineTab({
       <td>${sp.nachname}</td>
       <td>${sp.position}</td>
       <td><strong>${sp.handballId}</strong></td>
-      <td class="${sp.status === "✅" ? "status-ok" : "status-vl"}">${sp.status}</td>
+      <td class="${sp.status === "✅" ? "status-ok" : sp.status === "Gast" ? "status-gast" : "status-vl"}">${sp.status}</td>
+      <td class="check"><span class="checkbox">${(sp.position || "").startsWith("Feldspieler") ? "✓" : ""}</span></td>
+      <td class="check"><span class="checkbox">${sp.position === "Torwart" ? "✓" : ""}</span></td>
     </tr>`).join("")}
   </tbody>
 </table>
