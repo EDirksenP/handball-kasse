@@ -491,12 +491,13 @@ function BenutzerTab({
       .filter(b => (b.mannschaft||"1. Herren") === pdfMannschaft && b.benutzername !== "admin.3hsg")
       .sort((a,b) => (parseInt(a.trikotnummer)||999)-(parseInt(b.trikotnummer)||999) || a.nachname.localeCompare(b.nachname));
     if(mitglieder.length === 0) return toast("⚠️ Keine Mitglieder!");
+    const mitVerein = mitglieder.some(b => vereinName(b.verein));
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
 <style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:20px}.header h1{color:#003F8A;font-size:22px;margin:0 0 4px 0}.header h2{font-size:15px;color:#333;margin:0;font-weight:normal}table{width:100%;border-collapse:collapse}th{background:#003F8A;color:white;padding:10px 12px;text-align:left;font-size:13px}td{padding:9px 12px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:24px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px}</style>
 </head><body>
 <div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
-<table><thead><tr><th>#</th><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th><th>Kategorie</th></tr></thead>
-<tbody>${mitglieder.map((b,i)=>`<tr><td>${i+1}</td><td>${b.trikotnummer||""}</td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position||""}</td><td><strong>${b.handballId||""}</strong></td><td>${b.kategorie==="azubi"?"Azubi/Schüler":"Arbeiter"}</td></tr>`).join("")}</tbody></table>
+<table><thead><tr><th>#</th><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th><th>Kategorie</th>${mitVerein ? "<th>Verein</th>" : ""}</tr></thead>
+<tbody>${mitglieder.map((b,i)=>`<tr><td>${i+1}</td><td>${b.trikotnummer||""}</td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position||""}</td><td><strong>${b.handballId||""}</strong></td><td>${b.kategorie==="azubi"?"Azubi/Schüler":"Arbeiter"}</td>${mitVerein ? "<td>" + vereinName(b.verein) + "</td>" : ""}</tr>`).join("")}</tbody></table>
 <div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
 </body></html>`;
     const win = window.open("","_blank");
@@ -1037,7 +1038,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
     style: {background:"rgba(34,136,255,0.06)",border:"1px solid #2288FF33",borderRadius:14,padding:16,marginBottom:20}
   },
     /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#2288FF",fontWeight:700,marginBottom:8}}, "📋 Mitgliederliste als PDF"),
-    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine Liste mit Trikot, Position, Handball-ID und Kategorie."),
+    /*#__PURE__*/React.createElement("div", {style:{fontSize:12,color:"#94a3b8",marginBottom:10}}, "Erzeugt eine Liste mit Trikot, Position, Handball-ID, Kategorie und – falls gepflegt – Verein."),
     /*#__PURE__*/React.createElement("select", {
       value: pdfMannschaft,
       onChange: e => setPdfMannschaft(e.target.value),
