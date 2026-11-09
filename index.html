@@ -53,6 +53,7 @@ const ROLLEN_STANDARD = {
 };
 const EIGENE_ROLLEN = [];
 const VEREINE = [];
+const MITBRINGEN = [];
 const vereinName = k => {
   const v = VEREINE.find(x => x.key === k);
   return v ? v.name : "";
@@ -71,6 +72,8 @@ function applyStammdaten(d) {
   (Array.isArray(d.rollen) ? d.rollen : []).forEach(r => EIGENE_ROLLEN.push(r));
   VEREINE.length = 0;
   (Array.isArray(d.vereine) ? d.vereine : []).forEach(v => VEREINE.push(v));
+  MITBRINGEN.length = 0;
+  (Array.isArray(d.mitbringen) ? d.mitbringen : []).forEach(p => MITBRINGEN.push(p));
 }
 const GETRAENKE_DEFAULT = [];
 const SONSTIGES_DEFAULT = [];
@@ -1976,6 +1979,23 @@ function TermineTab({
     await ref("termine", t.id).update({gastspieler: (t.gastspieler || []).filter((_, i) => i !== idx)});
     toast("🗑️ Gastspieler entfernt");
   };
+  const mbName = n => {
+    const teile = (n || "").trim().split(" ");
+    return teile[0] + (teile.length > 1 ? " " + teile[teile.length - 1][0] + "." : "");
+  };
+  const mbEintragen = async (t, punkt) => {
+    const ich = cu.vorname + " " + cu.nachname;
+    const liste = (t.mitbringen || {})[punkt.key] || [];
+    if (liste.includes(ich)) return;
+    if (liste.length >= (punkt.anzahl || 1)) return toast("⚠️ Alle Plätze für „" + punkt.name + "“ sind vergeben!");
+    await ref("termine", t.id).update({["mitbringen." + punkt.key]: [...liste, ich]});
+    toast("✅ Danke! Du bringst " + punkt.name + " mit.");
+  };
+  const mbAustragen = async (t, punkt, person) => {
+    const liste = (t.mitbringen || {})[punkt.key] || [];
+    await ref("termine", t.id).update({["mitbringen." + punkt.key]: liste.filter(n => n !== person)});
+    toast("↩️ Ausgetragen");
+  };
 
   // Nur Termine der eigenen Mannschaft
   const meineMannschaft = cu.mannschaft || "1. Herren";
@@ -2032,7 +2052,7 @@ function TermineTab({
       zusagen: editT.zusagen || [],
       absagen: editT.absagen || [],
       ts: editT.ts
-    });
+    }, {merge: true});
     setEditT(null);
     toast("✅ Gespeichert");
   };
@@ -2429,6 +2449,43 @@ function TermineTab({
         onClick: () => addGast(t),
         style: {padding: "0 14px", background: "linear-gradient(135deg,#0066CC,#2288FF)", border: "none", borderRadius: 12, color: "white", fontWeight: 800, fontSize: 18, cursor: "pointer", flexShrink: 0}
       }, "+"))) : null);
+    })() : null, t.typ === "punktspiel" ? (() => {
+      if (MITBRINGEN.length === 0) return kannBearbeiten ? /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 10, fontSize: 11, color: "#64748b"}
+      }, "🧺 Keine Mitbring-Punkte – unter Stammdaten anlegen.") : null;
+      const ich = cu.vorname + " " + cu.nachname;
+      const kommend = t.datum >= heute;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)"}
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 11, color: "#fbbf24", fontWeight: 700, marginBottom: 6}
+      }, "🧺 MITBRINGEN"), MITBRINGEN.map(p => {
+        const liste = (t.mitbringen || {})[p.key] || [];
+        const plaetze = p.anzahl || 1;
+        const voll = liste.length >= plaetze;
+        const ichDabei = liste.includes(ich);
+        return /*#__PURE__*/React.createElement("div", {
+          key: p.key,
+          style: {padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)"}
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {display: "flex", alignItems: "center", gap: 8}
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {flex: 1, fontSize: 13, fontWeight: 700, color: voll ? "#4ade80" : "#e2e8f0"}
+        }, (p.emoji || "🧺") + " " + p.name, /*#__PURE__*/React.createElement("span", {
+          style: {fontWeight: 400, fontSize: 11, color: "#64748b"}
+        }, " " + liste.length + "/" + plaetze)), kommend && !ichDabei && !voll ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => mbEintragen(t, p),
+          style: {background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.4)", color: "#fbbf24", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap"}
+        }, "✋ Ich bringe mit") : null), liste.length > 0 ? /*#__PURE__*/React.createElement("div", {
+          style: {display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4}
+        }, liste.map(n => /*#__PURE__*/React.createElement("span", {
+          key: n,
+          style: {display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "2px 8px", fontSize: 11, color: "#cbd5e1"}
+        }, mbName(n), kommend && (n === ich || kannBearbeiten) ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => mbAustragen(t, p, n),
+          style: {background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0, fontWeight: 900}
+        }, "×") : null))) : null);
+      }));
     })() : null, kannBearbeiten && /*#__PURE__*/React.createElement("button", {
       onClick: async () => {
         const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
@@ -3315,7 +3372,14 @@ function StammdatenTab({
   const [editRolle, setEditRolle] = useState(null);
   const [neuerVerein, setNeuerVerein] = useState("");
   const [editVerein, setEditVerein] = useState(null);
+  const [neuerPunkt, setNeuerPunkt] = useState({
+    emoji: "🧺",
+    name: "",
+    anzahl: "1"
+  });
+  const [editPunkt, setEditPunkt] = useState(null);
   const vereine = [...VEREINE];
+  const punkte = [...MITBRINGEN];
   const mannschaften = [...MANNSCHAFTEN];
   const eigeneRollen = [...EIGENE_ROLLEN];
   const speichern = patch => ref("stammdaten", "config").set(patch, {
@@ -3355,6 +3419,48 @@ function StammdatenTab({
       vereine: vereine.filter(x => x.key !== v.key)
     });
     toast("🗑️ Verein entfernt");
+  };
+  const anzahlVon = wert => Math.max(1, Math.min(20, parseInt(wert) || 1));
+  const addPunkt = async () => {
+    const name = neuerPunkt.name.trim();
+    if (!name) return toast("⚠️ Bitte eine Bezeichnung eingeben!");
+    if (punkte.some(p => p.name.toLowerCase() === name.toLowerCase())) return toast("⚠️ Diesen Punkt gibt es schon!");
+    const neu = {
+      key: "mb_" + Date.now().toString(36),
+      name,
+      emoji: neuerPunkt.emoji.trim() || "🧺",
+      anzahl: anzahlVon(neuerPunkt.anzahl)
+    };
+    await speichern({
+      mitbringen: [...punkte, neu]
+    });
+    setNeuerPunkt({
+      emoji: "🧺",
+      name: "",
+      anzahl: "1"
+    });
+    toast("✅ Punkt hinzugefügt!");
+  };
+  const savePunkt = async () => {
+    const name = editPunkt.name.trim();
+    if (!name) return toast("⚠️ Die Bezeichnung darf nicht leer sein!");
+    if (punkte.some(p => p.key !== editPunkt.key && p.name.toLowerCase() === name.toLowerCase())) return toast("⚠️ Diesen Punkt gibt es schon!");
+    await speichern({
+      mitbringen: punkte.map(p => p.key === editPunkt.key ? {
+        ...p,
+        name,
+        emoji: editPunkt.emoji.trim() || "🧺",
+        anzahl: anzahlVon(editPunkt.anzahl)
+      } : p)
+    });
+    setEditPunkt(null);
+    toast("✅ Punkt gespeichert!");
+  };
+  const delPunkt = async p => {
+    await speichern({
+      mitbringen: punkte.filter(x => x.key !== p.key)
+    });
+    toast("🗑️ Punkt entfernt");
   };
   const addMannschaft = async () => {
     const name = neueMannschaft.trim();
@@ -3772,7 +3878,165 @@ function StammdatenTab({
   }), /*#__PURE__*/React.createElement("button", {
     onClick: addRolle,
     style: btnPlus
-  }, "+")));
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...kopf,
+      marginTop: 28
+    }
+  }, "🧺 Mitbringen bei Punktspielen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginBottom: 10
+    }
+  }, "Diese Punkte erscheinen bei jedem Punktspiel (z.B. Kaffee, Kuchen, Becher). „Anzahl“ ist die Zahl der Personen, die sich eintragen können."), punkte.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#475569",
+      marginBottom: 10
+    }
+  }, "Noch keine Punkte angelegt."), punkte.map(p => editPunkt && editPunkt.key === p.key ? /*#__PURE__*/React.createElement("div", {
+    key: p.key,
+    style: {
+      ...zeile,
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: editPunkt.emoji,
+    onChange: e => setEditPunkt(x => ({
+      ...x,
+      emoji: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 50,
+      flex: "none",
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: editPunkt.name,
+    onChange: e => setEditPunkt(x => ({
+      ...x,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1,
+      minWidth: 0
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: editPunkt.anzahl,
+    onChange: e => setEditPunkt(x => ({
+      ...x,
+      anzahl: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 56,
+      flex: "none",
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: savePunkt,
+    style: {
+      ...btnBearbeiten,
+      color: "#4ade80",
+      borderColor: "#4ade80",
+      background: "#4ade8022"
+    }
+  }, "✓"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditPunkt(null),
+    style: btnLoeschen
+  }, "✕")) : /*#__PURE__*/React.createElement("div", {
+    key: p.key,
+    style: zeile
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, p.emoji, " ", p.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, p.anzahl || 1, " ", (p.anzahl || 1) === 1 ? "Person" : "Personen")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEditPunkt({
+      ...p,
+      anzahl: String(p.anzahl || 1)
+    }),
+    style: btnBearbeiten
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => delPunkt(p),
+    style: btnLoeschen
+  }, "🗑️"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: neuerPunkt.emoji,
+    onChange: e => setNeuerPunkt(x => ({
+      ...x,
+      emoji: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 50,
+      flex: "none",
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "z.B. Kuchen",
+    value: neuerPunkt.name,
+    onChange: e => setNeuerPunkt(x => ({
+      ...x,
+      name: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1,
+      minWidth: 0
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: neuerPunkt.anzahl,
+    onChange: e => setNeuerPunkt(x => ({
+      ...x,
+      anzahl: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 56,
+      flex: "none",
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addPunkt,
+    style: btnPlus
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b",
+      marginTop: 6
+    }
+  }, "Beim Löschen eines Punktes verschwinden auch die Eintragungen in den Terminen."));
 }
 
 
