@@ -42,6 +42,36 @@ const col = n => window.db.collection(n);
 const ref = (n, id) => window.db.collection(n).doc(id);
 const AUTH_KEY = "hsg_auth_v3";
 const MANNSCHAFTEN = ["1. Herren", "2. Herren", "3. Herren", "1. Damen", "2. Damen", "3. Damen"];
+const MANNSCHAFTEN_STANDARD = [...MANNSCHAFTEN];
+const ROLLEN_STANDARD = {
+  mitglied: "Mitglied",
+  strafenwart: "⚖️ Strafenwart",
+  eventorga: "📅 Eventorganisation",
+  kasse: "💵 Kasse",
+  zeitnahmeadmin: "⏱️ Zeitnahme-Admin",
+  admin: "👑 Admin"
+};
+const EIGENE_ROLLEN = [];
+const VEREINE = [];
+const vereinName = k => {
+  const v = VEREINE.find(x => x.key === k);
+  return v ? v.name : "";
+};
+const rolleLabel = k => {
+  if (ROLLEN_STANDARD[k]) return ROLLEN_STANDARD[k];
+  const r = EIGENE_ROLLEN.find(x => x.key === k);
+  return r ? r.emoji + " " + r.label : k;
+};
+function applyStammdaten(d) {
+  if (Array.isArray(d.mannschaften) && d.mannschaften.length > 0) {
+    MANNSCHAFTEN.length = 0;
+    d.mannschaften.forEach(m => MANNSCHAFTEN.push(m));
+  }
+  EIGENE_ROLLEN.length = 0;
+  (Array.isArray(d.rollen) ? d.rollen : []).forEach(r => EIGENE_ROLLEN.push(r));
+  VEREINE.length = 0;
+  (Array.isArray(d.vereine) ? d.vereine : []).forEach(v => VEREINE.push(v));
+}
 const GETRAENKE_DEFAULT = [];
 const SONSTIGES_DEFAULT = [];
 const STRAFEN_DEFAULT = [];
@@ -155,7 +185,8 @@ function Login({
       rolle: b.rolle,
       vorname: b.vorname,
       nachname: b.nachname,
-      mannschaft: b.mannschaft || ""
+      mannschaft: b.mannschaft || "",
+      rollen: Array.isArray(b.rollen) ? b.rollen : [b.rolle || "mitglied"]
     };
     sv(AUTH_KEY, ud);
     onLogin(ud);
@@ -382,7 +413,8 @@ function BenutzerTab({
     passwort: "",
     rolle: "mitglied",
     mannschaft: "1. Herren",
-    geburtstag: ""
+    geburtstag: "",
+    verein: ""
   });
   const [edit, setEdit] = useState(null);
   const [gutModal, setGutModal] = useState(null);
@@ -433,7 +465,8 @@ function BenutzerTab({
       rolle: form.rolle,
       mannschaft: form.mannschaft,
       guthaben: 0,
-      geburtstag: form.geburtstag || ""
+      geburtstag: form.geburtstag || "",
+      verein: form.verein || ""
     });
     setForm({
       vorname: "",
@@ -441,7 +474,8 @@ function BenutzerTab({
       passwort: "",
       rolle: "mitglied",
       mannschaft: "1. Herren",
-      geburtstag: ""
+      geburtstag: "",
+      verein: ""
     });
     toast("✅ Benutzer angelegt!");
   };
@@ -594,7 +628,8 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       handballId: edit.handballId || "",
       trikotnummer: edit.trikotnummer || "",
       position: edit.position || "",
-      kategorie: edit.kategorie || "arbeiter"
+      kategorie: edit.kategorie || "arbeiter",
+      verein: edit.verein || ""
     });
     setEdit(null);
     toast("✅ Gespeichert");
@@ -692,7 +727,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
     /*#__PURE__*/React.createElement("div", {style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,minHeight:36,padding:"6px 8px",background:"rgba(255,255,255,0.03)",border:"1px solid #003070",borderRadius:10}},
       (Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"]).map(r =>
         /*#__PURE__*/React.createElement("span", {key:r, style:{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}},
-          r==="mitglied"?"Mitglied":r==="strafenwart"?"⚖️ Strafenwart":r==="eventorga"?"📅 Eventorganisation":r==="kasse"?"💵 Kasse":r==="zeitnahmeadmin"?"⏱️ Zeitnahme-Admin":"👑 Admin",
+          rolleLabel(r),
           /*#__PURE__*/React.createElement("button", {
             onClick: () => setEdit(x => ({...x, rollen: (Array.isArray(x.rollen)?x.rollen:[x.rolle||"mitglied"]).filter(rr=>rr!==r) })),
             style:{background:"none",border:"none",cursor:"pointer",color:"#f87171",fontSize:14,lineHeight:1,padding:"0 0 0 2px",fontWeight:900}
@@ -719,9 +754,16 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       /*#__PURE__*/React.createElement("option", {value:"eventorga"}, "📅 Eventorganisation"),
       /*#__PURE__*/React.createElement("option", {value:"kasse"}, "💵 Kasse"),
       /*#__PURE__*/React.createElement("option", {value:"zeitnahmeadmin"}, "⏱️ Zeitnahme-Admin"),
-      /*#__PURE__*/React.createElement("option", {value:"admin"}, "👑 Admin")
+      /*#__PURE__*/React.createElement("option", {value:"admin"}, "👑 Admin"),
+      ...EIGENE_ROLLEN.map(r => /*#__PURE__*/React.createElement("option", {key: r.key, value: r.key}, r.emoji + " " + r.label))
     )
   ), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize: 11, color: "#94a3b8", fontWeight: 700, display: "block"}
+  }, "🏛️ VEREIN"), /*#__PURE__*/React.createElement("select", {
+    value: edit.verein || "",
+    onChange: e => setEdit(x => ({...x, verein: e.target.value})),
+    style: {...IS, marginTop: 4, marginBottom: 8}
+  }, /*#__PURE__*/React.createElement("option", {value: ""}, "— kein Verein —"), ...VEREINE.map(v => /*#__PURE__*/React.createElement("option", {key: v.key, value: v.key}, v.name))), /*#__PURE__*/React.createElement("label", {
     style: {
       fontSize: 11,
       color: "#94a3b8",
@@ -846,7 +888,9 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       fontSize: 11,
       color: "#64748b"
     }
-  }, b.mannschaft || ""), b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":b.position==="Feldspieler (Springer)"?"🔄 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
+  }, b.mannschaft || ""), b.verein && vereinName(b.verein) ? /*#__PURE__*/React.createElement("div", {
+    style: {fontSize: 11, color: "#94a3b8", marginTop: 1}
+  }, "🏛️ ", vereinName(b.verein)) : null, b.trikotnummer && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#60a5fa",marginTop:1}}, "👕 #", b.trikotnummer), b.position && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#34d399",marginTop:1}}, b.position==="Torwart"?"🧤 ":b.position==="Mannschaftsverantwortlicher"?"📋 ":b.position==="Feldspieler (Springer)"?"🔄 ":"🏃 ", b.position), b.handballId && /*#__PURE__*/React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:1}}, "🏐 ", b.handballId), b.geburtstag && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: "#f472b6",
@@ -866,7 +910,10 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       fontWeight: 700,
       marginTop: 2
     }
-  }, "📅 Eventorganisation"), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, "📅 Eventorganisation"), (Array.isArray(b.rollen) ? b.rollen : [b.rolle]).filter(k => k && k !== "mitglied" && k !== "admin" && !(k === b.rolle && (k === "strafenwart" || k === "eventorga"))).map(k => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {fontSize: 11, color: "#67e8f9", fontWeight: 700, marginTop: 2}
+  }, rolleLabel(k))), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -1231,7 +1278,13 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
     value: "zeitnahmeadmin"
   }, "⏱️ Zeitnahme-Admin"), /*#__PURE__*/React.createElement("option", {
     value: "admin"
-  }, "Admin")), /*#__PURE__*/React.createElement("label", {
+  }, "Admin"), ...EIGENE_ROLLEN.map(r => /*#__PURE__*/React.createElement("option", {key: r.key, value: r.key}, r.emoji + " " + r.label))), /*#__PURE__*/React.createElement("label", {
+    style: {fontSize: 11, color: "#94a3b8", fontWeight: 700, display: "block", marginTop: 10}
+  }, "🏛️ VEREIN"), /*#__PURE__*/React.createElement("select", {
+    value: form.verein || "",
+    onChange: e => setForm(f => ({...f, verein: e.target.value})),
+    style: IS
+  }, /*#__PURE__*/React.createElement("option", {value: ""}, "— kein Verein —"), ...VEREINE.map(v => /*#__PURE__*/React.createElement("option", {key: v.key, value: v.key}, v.name))), /*#__PURE__*/React.createElement("label", {
     style: {
       fontSize: 11,
       color: "#94a3b8",
@@ -3247,6 +3300,481 @@ function SonstigesTab({
 }
 
 // ── SCHWARZES BRETT VERWALTUNG (in BenutzerTab) ──────────────
+// ── STAMMDATEN TAB ─────────────────────────────────────────
+function StammdatenTab({
+  benutzer,
+  stammdaten,
+  toast
+}) {
+  const [neueMannschaft, setNeueMannschaft] = useState("");
+  const [neueRolle, setNeueRolle] = useState({
+    emoji: "🏷️",
+    label: ""
+  });
+  const [editRolle, setEditRolle] = useState(null);
+  const [neuerVerein, setNeuerVerein] = useState("");
+  const [editVerein, setEditVerein] = useState(null);
+  const vereine = [...VEREINE];
+  const mannschaften = [...MANNSCHAFTEN];
+  const eigeneRollen = [...EIGENE_ROLLEN];
+  const speichern = patch => ref("stammdaten", "config").set(patch, {
+    merge: true
+  });
+  const rollenVon = b => Array.isArray(b.rollen) ? b.rollen : [b.rolle || "mitglied"];
+  const addVerein = async () => {
+    const name = neuerVerein.trim();
+    if (!name) return toast("⚠️ Bitte einen Namen eingeben!");
+    if (vereine.some(v => v.name.toLowerCase() === name.toLowerCase())) return toast("⚠️ Diesen Verein gibt es schon!");
+    await speichern({
+      vereine: [...vereine, {
+        key: "verein_" + Date.now().toString(36),
+        name
+      }]
+    });
+    setNeuerVerein("");
+    toast("✅ Verein hinzugefügt!");
+  };
+  const saveVerein = async () => {
+    const name = editVerein.name.trim();
+    if (!name) return toast("⚠️ Der Name darf nicht leer sein!");
+    if (vereine.some(v => v.key !== editVerein.key && v.name.toLowerCase() === name.toLowerCase())) return toast("⚠️ Diesen Verein gibt es schon!");
+    await speichern({
+      vereine: vereine.map(v => v.key === editVerein.key ? {
+        ...v,
+        name
+      } : v)
+    });
+    setEditVerein(null);
+    toast("✅ Verein gespeichert!");
+  };
+  const delVerein = async v => {
+    const anzahl = benutzer.filter(b => b.verein === v.key).length;
+    if (anzahl > 0) return toast("⚠️ " + anzahl + " Benutzer sind noch in „" + v.name + "“ – erst ändern!");
+    await speichern({
+      vereine: vereine.filter(x => x.key !== v.key)
+    });
+    toast("🗑️ Verein entfernt");
+  };
+  const addMannschaft = async () => {
+    const name = neueMannschaft.trim();
+    if (!name) return toast("⚠️ Bitte einen Namen eingeben!");
+    if (mannschaften.some(m => m.toLowerCase() === name.toLowerCase())) return toast("⚠️ Diese Mannschaft gibt es schon!");
+    await speichern({
+      mannschaften: [...mannschaften, name]
+    });
+    setNeueMannschaft("");
+    toast("✅ Mannschaft hinzugefügt!");
+  };
+  const delMannschaft = async m => {
+    const anzahl = benutzer.filter(b => (b.mannschaft || "1. Herren") === m).length;
+    if (anzahl > 0) return toast("⚠️ " + anzahl + " Benutzer sind noch in „" + m + "“ – erst verschieben!");
+    if (mannschaften.length <= 1) return toast("⚠️ Mindestens eine Mannschaft muss bleiben!");
+    await speichern({
+      mannschaften: mannschaften.filter(x => x !== m)
+    });
+    toast("🗑️ Mannschaft entfernt");
+  };
+  const addRolle = async () => {
+    const label = neueRolle.label.trim();
+    if (!label) return toast("⚠️ Bitte eine Bezeichnung eingeben!");
+    const vergeben = [...Object.values(ROLLEN_STANDARD).map(l => l.replace(/^\S+\s/, "")), ...eigeneRollen.map(r => r.label)];
+    if (vergeben.some(l => l.toLowerCase() === label.toLowerCase())) return toast("⚠️ Diese Rolle gibt es schon!");
+    const neu = {
+      key: "custom_" + Date.now().toString(36),
+      label,
+      emoji: neueRolle.emoji.trim() || "🏷️"
+    };
+    await speichern({
+      rollen: [...eigeneRollen, neu]
+    });
+    setNeueRolle({
+      emoji: "🏷️",
+      label: ""
+    });
+    toast("✅ Rolle hinzugefügt!");
+  };
+  const saveRolle = async () => {
+    const label = editRolle.label.trim();
+    if (!label) return toast("⚠️ Bezeichnung darf nicht leer sein!");
+    await speichern({
+      rollen: eigeneRollen.map(r => r.key === editRolle.key ? {
+        ...r,
+        label,
+        emoji: editRolle.emoji.trim() || "🏷️"
+      } : r)
+    });
+    setEditRolle(null);
+    toast("✅ Rolle gespeichert!");
+  };
+  const delRolle = async r => {
+    const anzahl = benutzer.filter(b => rollenVon(b).includes(r.key)).length;
+    if (anzahl > 0) return toast("⚠️ " + anzahl + " Benutzer haben diese Rolle noch – erst entfernen!");
+    await speichern({
+      rollen: eigeneRollen.filter(x => x.key !== r.key)
+    });
+    toast("🗑️ Rolle entfernt");
+  };
+  const festeRollen = [["mitglied", "Standard – Buchen, Termine, Mein Konto"], ["strafenwart", "Strafen verhängen und bestätigen"], ["eventorga", "Termine anlegen, Schwarzes Brett"], ["kasse", "Mannschaftskasse verwalten"], ["zeitnahmeadmin", "Zeitnahme-Termine anlegen"], ["admin", "Voller Zugriff inkl. Benutzer und Stammdaten"]];
+  const kopf = {
+    fontSize: 12,
+    color: "#94a3b8",
+    fontWeight: 700,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 10
+  };
+  const zeile = {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 14px",
+    borderRadius: 12,
+    marginBottom: 6,
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid #003070"
+  };
+  const btnLoeschen = {
+    background: "rgba(248,113,113,0.1)",
+    border: "1px solid rgba(248,113,113,0.3)",
+    color: "#f87171",
+    borderRadius: 7,
+    padding: "4px 9px",
+    fontSize: 12,
+    cursor: "pointer"
+  };
+  const btnBearbeiten = {
+    background: "rgba(34,136,255,0.1)",
+    border: "1px solid rgba(34,136,255,0.3)",
+    color: "#2288FF",
+    borderRadius: 7,
+    padding: "4px 9px",
+    fontSize: 12,
+    cursor: "pointer"
+  };
+  const btnPlus = {
+    padding: "0 16px",
+    background: "linear-gradient(135deg,#0066CC,#2288FF)",
+    border: "none",
+    borderRadius: 12,
+    color: "white",
+    fontWeight: 800,
+    fontSize: 20,
+    cursor: "pointer",
+    flexShrink: 0
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...kopf,
+      fontSize: 13,
+      marginBottom: 16
+    }
+  }, "🗂️ Stammdaten"), /*#__PURE__*/React.createElement("div", {
+    style: kopf
+  }, "🏛️ Vereine"), vereine.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#475569",
+      marginBottom: 10
+    }
+  }, "Noch kein Verein angelegt."), vereine.map(v => {
+    const anzahl = benutzer.filter(b => b.verein === v.key).length;
+    return editVerein && editVerein.key === v.key ? /*#__PURE__*/React.createElement("div", {
+      key: v.key,
+      style: {
+        ...zeile,
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: editVerein.name,
+      onChange: e => setEditVerein(x => ({
+        ...x,
+        name: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: saveVerein,
+      style: {
+        ...btnBearbeiten,
+        color: "#4ade80",
+        borderColor: "#4ade80",
+        background: "#4ade8022"
+      }
+    }, "✓"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditVerein(null),
+      style: btnLoeschen
+    }, "✕")) : /*#__PURE__*/React.createElement("div", {
+      key: v.key,
+      style: zeile
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, v.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, anzahl, " Benutzer")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditVerein({
+        ...v
+      }),
+      style: btnBearbeiten
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delVerein(v),
+      style: btnLoeschen
+    }, "🗑️"));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 10,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Neuer Verein (z.B. HSG Emden)",
+    value: neuerVerein,
+    onChange: e => setNeuerVerein(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addVerein,
+    style: btnPlus
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b",
+      marginBottom: 24
+    }
+  }, "Der Verein wird beim Benutzer ausgewählt. Umbenennen ist möglich, die Zuordnung bleibt erhalten. Löschen geht nur ohne zugeordnete Benutzer. Titel und PDF-Köpfe sind davon unabhängig."), /*#__PURE__*/React.createElement("div", {
+    style: kopf
+  }, "🤾 Mannschaften"), mannschaften.map(m => {
+    const anzahl = benutzer.filter(b => (b.mannschaft || "1. Herren") === m).length;
+    return /*#__PURE__*/React.createElement("div", {
+      key: m,
+      style: zeile
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, m), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, anzahl, " Benutzer")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delMannschaft(m),
+      style: btnLoeschen
+    }, "🗑️"));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 10,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Neue Mannschaft (z.B. 4. Herren)",
+    value: neueMannschaft,
+    onChange: e => setNeueMannschaft(e.target.value),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addMannschaft,
+    style: btnPlus
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b",
+      marginBottom: 24
+    }
+  }, "Löschen geht nur, wenn kein Benutzer mehr in der Mannschaft ist. Umbenennen ist nicht möglich, weil Buchungen, Termine und Strafen den Namen mitführen."), /*#__PURE__*/React.createElement("div", {
+    style: kopf
+  }, "🏷️ Rollen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#fbbf24",
+      marginBottom: 10
+    }
+  }, "Die festen Rollen steuern die Rechte und sind im Code hinterlegt."), festeRollen.map(([key, text]) => /*#__PURE__*/React.createElement("div", {
+    key: key,
+    style: {
+      ...zeile,
+      padding: "8px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, ROLLEN_STANDARD[key]), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#64748b"
+    }
+  }, text)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: "#475569"
+    }
+  }, "fest"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...kopf,
+      marginTop: 20
+    }
+  }, "Eigene Rollen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginBottom: 10
+    }
+  }, "Nur Bezeichnung (z.B. Trainer, Betreuer). Sie geben keine zusätzlichen Rechte, erscheinen aber als Badge beim Benutzer."), eigeneRollen.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#475569",
+      marginBottom: 10
+    }
+  }, "Noch keine eigenen Rollen angelegt."), eigeneRollen.map(r => {
+    const anzahl = benutzer.filter(b => rollenVon(b).includes(r.key)).length;
+    return editRolle && editRolle.key === r.key ? /*#__PURE__*/React.createElement("div", {
+      key: r.key,
+      style: {
+        ...zeile,
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: editRolle.emoji,
+      onChange: e => setEditRolle(x => ({
+        ...x,
+        emoji: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        width: 56,
+        flex: "none",
+        textAlign: "center"
+      }
+    }), /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: editRolle.label,
+      onChange: e => setEditRolle(x => ({
+        ...x,
+        label: e.target.value
+      })),
+      style: {
+        ...IS,
+        marginTop: 0,
+        flex: 1
+      }
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: saveRolle,
+      style: {
+        ...btnBearbeiten,
+        color: "#4ade80",
+        borderColor: "#4ade80",
+        background: "#4ade8022"
+      }
+    }, "✓"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditRolle(null),
+      style: btnLoeschen
+    }, "✕")) : /*#__PURE__*/React.createElement("div", {
+      key: r.key,
+      style: zeile
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, r.emoji, " ", r.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#64748b"
+      }
+    }, anzahl, " Benutzer")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditRolle({
+        ...r
+      }),
+      style: btnBearbeiten
+    }, "✏️"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => delRolle(r),
+      style: btnLoeschen
+    }, "🗑️"));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: neueRolle.emoji,
+    onChange: e => setNeueRolle(x => ({
+      ...x,
+      emoji: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      width: 56,
+      flex: "none",
+      textAlign: "center"
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Neue Rolle (z.B. Trainer)",
+    value: neueRolle.label,
+    onChange: e => setNeueRolle(x => ({
+      ...x,
+      label: e.target.value
+    })),
+    style: {
+      ...IS,
+      marginTop: 0,
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: addRolle,
+    style: btnPlus
+  }, "+")));
+}
+
+
 // ── ZEITNAHME TAB ──────────────────────────────────────────
 function ZeitnahmeTab({
   benutzer,
@@ -4591,7 +5119,12 @@ function MainApp({
   const [schwarzesBrett, setSchwarzBrett] = useState([]);
   const [mannschaftskasse, setMannschaftskasse] = useState([]);
   const [zeitnahmeTermine, setZeitnahmeTermine] = useState([]);
-  const hasRolle = (r) => Array.isArray(cu.rollen) ? cu.rollen.includes(r) : cu.rolle === r;
+  const [stammdaten, setStammdaten] = useState({});
+  const meinBenutzer = benutzer.find(b => b.id === cu.id);
+  const meineRollen = meinBenutzer
+    ? (Array.isArray(meinBenutzer.rollen) ? meinBenutzer.rollen : [meinBenutzer.rolle || "mitglied"])
+    : (Array.isArray(cu.rollen) ? cu.rollen : [cu.rolle]);
+  const hasRolle = (r) => meineRollen.includes(r);
   const isAdmin = hasRolle("admin");
   const isStrafenwart = hasRolle("strafenwart") || isAdmin;
   const isEventorga = hasRolle("eventorga") || isAdmin;
@@ -4709,7 +5242,12 @@ function MainApp({
       setZeitnahmeTermine(s.docs.map(d => ({id: d.id, ...d.data()})));
       done();
     });
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); };
+    const u11 = ref("stammdaten", "config").onSnapshot(s => {
+      const d = s.data() || {};
+      applyStammdaten(d);
+      setStammdaten(d);
+    }, err => console.warn("Stammdaten nicht lesbar:", err));
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); u11(); };
   }, []);
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
@@ -4846,7 +5384,7 @@ function MainApp({
     const q = vSuche.trim().toLowerCase();
     return (e.beschreibung || "").toLowerCase().includes(q) || (e.person || "").toLowerCase().includes(q) || (e.datum || "").toLowerCase().includes(q);
   });
-  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ["zeitnahme", "⏱️", "Zeitnahme"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"]] : [])];
+  const navs = [["konto", "👤", "Mein Konto"], ["buchen", "⚡", "Buchen"], ["neu", "✏️", "Manuell"], ["übersicht", "📊", "Übersicht"], ["verlauf", "📋", "Verlauf"], ["spieler", "👥", "Spieler"], ["sonstiges", "🛒", "Sonstiges"], ["termine", "📅", "Termine"], ["zeitnahme", "⏱️", "Zeitnahme"], ...(isEventorga && !isAdmin ? [["brett", "📌", "Brett"]] : []), ...(isStrafenwart ? [["strafen", "⚖️", "Strafen"]] : []), ...(isKasse && !isAdmin ? [["kasse", "💵", "Kasse"]] : []), ...(isAdmin ? [["kasse", "💵", "Kasse"], ["benutzer", "👑", "Benutzer"], ["stammdaten", "🗂️", "Stammdaten"]] : [])];
   if (loading) return /*#__PURE__*/React.createElement("div", {
     style: {
       minHeight: "100vh",
@@ -4914,7 +5452,7 @@ function MainApp({
       fontSize: 11,
       color: "#93c5fd"
     }
-  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : cu.rolle === "strafenwart" ? "⚖️" : cu.rolle === "eventorga" ? "📅" : "")), /*#__PURE__*/React.createElement("div", {
+  }, "🔴 Live · ", cu.vorname, " ", cu.nachname, " ", isAdmin ? "👑" : hasRolle("strafenwart") ? "⚖️" : hasRolle("eventorga") ? "📅" : hasRolle("kasse") ? "💵" : hasRolle("zeitnahmeadmin") ? "⏱️" : "")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: kasse >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
       border: `1px solid ${kasse >= 0 ? "#4ade80" : "#f87171"}`,
@@ -5074,7 +5612,9 @@ function MainApp({
         color: "#64748b",
         marginTop: 2
       }
-    }, "🤾 ", cu.mannschaft || "")), /*#__PURE__*/React.createElement("div", {
+    }, "🤾 ", cu.mannschaft || ""), meinBenutzer && vereinName(meinBenutzer.verein) ? /*#__PURE__*/React.createElement("div", {
+      style: {fontSize: 12, color: "#64748b", marginTop: 2}
+    }, "🏛️ ", vereinName(meinBenutzer.verein)) : null), /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: "right"
       }
@@ -5519,7 +6059,18 @@ function MainApp({
         textTransform: "uppercase",
         marginBottom: 12
       }
-    }, "🔑 Passwort ändern"), /*#__PURE__*/React.createElement("div", {
+    }, "👤 Meine Daten"), VEREINE.length > 0 || meinBenutzer && meinBenutzer.verein ? /*#__PURE__*/React.createElement("div", {
+      style: {marginBottom: 16}
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,marginTop:4}
+    }, "🏛️ Verein"), /*#__PURE__*/React.createElement("select", {
+      value: meinBenutzer && meinBenutzer.verein || "",
+      onChange: async e => {
+        await ref("benutzer", cu.id).update({verein: e.target.value});
+        toast("✅ Verein gespeichert!");
+      },
+      style: {...IS, marginTop: 0}
+    }, /*#__PURE__*/React.createElement("option", {value: ""}, "— kein Verein —"), ...VEREINE.map(v => /*#__PURE__*/React.createElement("option", {key: v.key, value: v.key}, v.name)))) : null, /*#__PURE__*/React.createElement("div", {
       style: {fontSize:12,color:"#94a3b8",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8,marginTop:4}
     }, "🏐 Handball-ID"), /*#__PURE__*/React.createElement("div", {
       style: {display:"flex",gap:8,marginBottom:16}
@@ -7210,7 +7761,11 @@ function MainApp({
     strafenEintraege: strafenEintraege,
     toast: toast,
     cu: cu
-  }), tab === "zeitnahme" && /*#__PURE__*/React.createElement(ZeitnahmeTab, {
+  }), tab === "stammdaten" && isAdmin && /*#__PURE__*/React.createElement(StammdatenTab, {
+        benutzer: benutzer,
+        stammdaten: stammdaten,
+        toast: toast
+      }), tab === "zeitnahme" && /*#__PURE__*/React.createElement(ZeitnahmeTab, {
         benutzer: benutzer, cu: cu,
         zeitnahmeTermine: zeitnahmeTermine,
         toast: toast,
