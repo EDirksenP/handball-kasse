@@ -169,6 +169,68 @@ const IS = {
   outline: "none",
   boxSizing: "border-box"
 };
+const KALENDER_DAUER_MIN = 120;
+const icsText = s => String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const utf8Bytes = zeichen => {
+  const cp = zeichen.codePointAt(0);
+  return cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+};
+const icsFalten = zeile => {
+  const teile = [];
+  let aktuell = "";
+  let bytes = 0;
+  for (const zeichen of zeile) {
+    const b = utf8Bytes(zeichen);
+    if (bytes + b > 75) {
+      teile.push(aktuell);
+      aktuell = " ";
+      bytes = 1;
+    }
+    aktuell += zeichen;
+    bytes += b;
+  }
+  teile.push(aktuell);
+  return teile.join("\r\n");
+};
+const icsZeit = (datum, uhrzeit, plusMinuten = 0) => {
+  const [y, m, d] = datum.split("-").map(Number);
+  const [h, min] = (uhrzeit || "00:00").split(":").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, h, min + plusMinuten));
+  const p = n => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}${p(dt.getUTCMonth() + 1)}${p(dt.getUTCDate())}T${p(dt.getUTCHours())}${p(dt.getUTCMinutes())}00`;
+};
+const icsDatum = (datum, plusTage = 0) => {
+  const [y, m, d] = datum.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + plusTage));
+  const p = n => String(n).padStart(2, "0");
+  return `${dt.getUTCFullYear()}${p(dt.getUTCMonth() + 1)}${p(dt.getUTCDate())}`;
+};
+const icsKalender = t => {
+  const typ = (TERMIN_TYPEN[t.typ] || TERMIN_TYPEN.sonstiges).label;
+  const ort = t.typ === "punktspiel" && t.spielort ? t.spielort === "heim" ? " (Heimspiel)" : " (Auswärtsspiel)" : "";
+  const jetzt = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const zeiten = t.uhrzeit ? [`DTSTART:${icsZeit(t.datum, t.uhrzeit)}`, `DTEND:${icsZeit(t.datum, t.uhrzeit, KALENDER_DAUER_MIN)}`] : [`DTSTART;VALUE=DATE:${icsDatum(t.datum)}`, `DTEND;VALUE=DATE:${icsDatum(t.datum, 1)}`];
+  const beschreibung = [t.mannschaft ? `Mannschaft: ${t.mannschaft}` : null, "Zu-/Absage und Infos in der App: https://3hsg-emden-kasse.de"].filter(Boolean).join("\n");
+  const zeilen = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//HSG Emden Kasse//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT", `UID:${t.id}@3hsg-emden-kasse.de`, `DTSTAMP:${jetzt}`, ...zeiten, `SUMMARY:${icsText(`${typ}${ort}: ${t.titel}`)}`, t.ort ? `LOCATION:${icsText(t.ort)}` : null, `DESCRIPTION:${icsText(beschreibung)}`, "END:VEVENT", "END:VCALENDAR"].filter(Boolean);
+  return zeilen.map(icsFalten).join("\r\n") + "\r\n";
+};
+const icsDateiname = t => {
+  const roh = String(t.titel || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return (roh || "Termin") + ".ics";
+};
+const ladeDateiHerunter = (dateiname, inhalt, typ) => {
+  const url = URL.createObjectURL(new Blob([inhalt], {
+    type: typ
+  }));
+  const a = document.createElement("a");
+  a.href = url;
+  const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  if (apple) a.target = "_blank";else a.download = dateiname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+};
 function Login({
   onLogin,
   benutzer
@@ -2718,7 +2780,20 @@ function TermineTab({
         color: "#94a3b8",
         marginTop: 2
       }
-    }, "📍 ", t.ort)), kannBearbeiten && React.createElement("div", {
+    }, "📍 ", t.ort), t.typ === "punktspiel" && t.datum >= heute ? React.createElement("button", {
+      onClick: () => ladeDateiHerunter(icsDateiname(t), icsKalender(t), "text/calendar;charset=utf-8"),
+      style: {
+        marginTop: 8,
+        padding: "5px 10px",
+        background: "rgba(34,136,255,0.1)",
+        border: "1px solid rgba(34,136,255,0.3)",
+        borderRadius: 8,
+        color: "#60a5fa",
+        fontSize: 11,
+        fontWeight: 700,
+        cursor: "pointer"
+      }
+    }, "📅 In Kalender übernehmen") : null), kannBearbeiten && React.createElement("div", {
       style: {
         display: "flex",
         flexDirection: "column",
@@ -4921,6 +4996,28 @@ function ZeitnahmeTab({
     toast("🗑️ Termin gelöscht");
   };
   const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  const heute = todayStr();
+  const freieZeitnehmer = t => (t.zeitnehmer1 ? 0 : 1) + (t.zeitnehmer2 ? 0 : 1);
+  const offeneTermine = eigeneTermine.filter(t => t.datum >= heute && freieZeitnehmer(t) > 0);
+  const kopiereZeitnahmeText = async liste => {
+    const offen = liste.filter(t => t.datum >= heute && freieZeitnehmer(t) > 0);
+    if (offen.length === 0) return toast("✅ Keine offenen Zeitnehmer-Plätze!");
+    const bloecke = offen.map(t => {
+      const wt = wochentage[new Date(t.datum + "T12:00:00").getDay()];
+      const frei = freieZeitnehmer(t);
+      let b = `📅 ${wt}, ${fmtD(t.datum)} um ${t.uhrzeit} Uhr – ${t.titel}\n`;
+      if (t.ort) b += `📍 ${t.ort}\n`;
+      if (t.info) b += `ℹ️ ${t.info}\n`;
+      return b + `⏱️ *Noch gesucht:* Zeitnehmer (${frei}×)`;
+    });
+    const text = `⏱️ *Zeitnehmer gesucht*\n\n${bloecke.join("\n\n")}\n\nBitte in der App eintragen:\n👉 https://3hsg-emden-kasse.de`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("✅ WhatsApp-Text kopiert! Jetzt in die Gruppe einfügen.");
+    } catch {
+      toast("⚠️ Kopieren fehlgeschlagen — bitte manuell kopieren.");
+    }
+  };
   return React.createElement("div", {
     style: {
       padding: 20
@@ -5125,7 +5222,21 @@ function ZeitnahmeTab({
       borderRadius: 10,
       cursor: "pointer"
     }
-  }, "✕")))), eigeneTermine.length === 0 ? React.createElement("div", {
+  }, "✕")))), isZeitnahmeAdmin && offeneTermine.length >= 2 ? React.createElement("button", {
+    onClick: () => kopiereZeitnahmeText(offeneTermine),
+    style: {
+      width: "100%",
+      marginBottom: 16,
+      padding: "10px",
+      background: "rgba(37,211,102,0.1)",
+      border: "1px solid rgba(37,211,102,0.4)",
+      borderRadius: 10,
+      color: "#25d166",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, "📲 WhatsApp-Text für alle ", offeneTermine.length, " offenen Termine kopieren") : null, eigeneTermine.length === 0 ? React.createElement("div", {
     style: {
       textAlign: "center",
       color: "#475569",
@@ -5290,7 +5401,21 @@ function ZeitnahmeTab({
         fontWeight: 700,
         padding: "6px 0"
       }
-    }, "✅ Du bist als Zeitnehmer eingetragen"));
+    }, "✅ Du bist als Zeitnehmer eingetragen"), isZeitnahmeAdmin && !istVergangen && !beideBesetzt ? React.createElement("button", {
+      onClick: () => kopiereZeitnahmeText([t]),
+      style: {
+        width: "100%",
+        marginTop: 8,
+        padding: "9px",
+        background: "rgba(37,211,102,0.1)",
+        border: "1px solid rgba(37,211,102,0.4)",
+        borderRadius: 10,
+        color: "#25d166",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer"
+      }
+    }, "📲 WhatsApp-Text kopieren") : null);
   }));
 }
 function MannschaftsKasseTab({
