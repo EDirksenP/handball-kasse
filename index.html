@@ -1949,6 +1949,7 @@ function TermineTab({
 }) {
   const [form, setForm] = useState({
     typ: "training",
+    spielort: "heim",
     titel: "",
     ort: "",
     datum: todayStr(),
@@ -2067,6 +2068,7 @@ function TermineTab({
       const datumStr = termDatum.toISOString().split("T")[0];
       await col("termine").add({
         typ: form.typ,
+        ...(form.typ === "punktspiel" ? {spielort: form.spielort || "heim"} : {}),
         titel: form.titel.trim(),
         ort: form.ort.trim(),
         datum: datumStr,
@@ -2079,6 +2081,7 @@ function TermineTab({
     }
     setForm({
       typ: "training",
+      spielort: "heim",
       titel: "",
       ort: "",
       datum: todayStr(),
@@ -2100,6 +2103,7 @@ function TermineTab({
       mannschaft: editT.mannschaft || meineMannschaft,
       zusagen: editT.zusagen || [],
       absagen: editT.absagen || [],
+      ...(editT.typ === "punktspiel" ? {spielort: editT.spielort || ""} : {}),
       ts: editT.ts
     }, {merge: true});
     setEditT(null);
@@ -2205,7 +2209,11 @@ function TermineTab({
         fontSize: 11,
         fontWeight: 700
       }
-    }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("input", {
+    }, info.emoji, " ", info.label))), editT.typ === "punktspiel" ? /*#__PURE__*/React.createElement("select", {
+      value: editT.spielort || "",
+      onChange: e => setEditT(x => ({...x, spielort: e.target.value})),
+      style: {...IS, marginTop: 0, marginBottom: 8}
+    }, /*#__PURE__*/React.createElement("option", {value: ""}, "— Heim/Auswärts wählen —"), /*#__PURE__*/React.createElement("option", {value: "heim"}, "🏠 Heimspiel"), /*#__PURE__*/React.createElement("option", {value: "auswaerts"}, "🚌 Auswärtsspiel")) : null, /*#__PURE__*/React.createElement("input", {
       value: editT.titel,
       onChange: e => setEditT(x => ({
         ...x,
@@ -2317,7 +2325,7 @@ function TermineTab({
         fontWeight: 700,
         marginBottom: 2
       }
-    }, typInfo.label), /*#__PURE__*/React.createElement("div", {
+    }, typInfo.label, t.typ === "punktspiel" && t.spielort ? " · " + (t.spielort === "heim" ? "🏠 Heimspiel" : "🚌 Auswärtsspiel") : ""), /*#__PURE__*/React.createElement("div", {
       style: {
         fontWeight: 700,
         fontSize: 15
@@ -2498,7 +2506,9 @@ function TermineTab({
         onClick: () => addGast(t),
         style: {padding: "0 14px", background: "linear-gradient(135deg,#0066CC,#2288FF)", border: "none", borderRadius: 12, color: "white", fontWeight: 800, fontSize: 18, cursor: "pointer", flexShrink: 0}
       }, "+"))) : null);
-    })() : null, t.typ === "punktspiel" ? (() => {
+    })() : null, t.typ === "punktspiel" && !t.spielort && kannBearbeiten ? /*#__PURE__*/React.createElement("div", {
+      style: {marginTop: 10, fontSize: 11, color: "#fbbf24"}
+    }, "ℹ️ Heim- oder Auswärtsspiel noch nicht festgelegt – bitte im Termin bearbeiten (✏️).") : null, t.typ === "punktspiel" && t.spielort !== "auswaerts" ? (() => {
       if (MITBRINGEN.length === 0) return kannBearbeiten ? /*#__PURE__*/React.createElement("div", {
         style: {marginTop: 10, fontSize: 11, color: "#64748b"}
       }, "🧺 Keine Mitbring-Punkte – unter Stammdaten anlegen.") : null;
@@ -2535,7 +2545,7 @@ function TermineTab({
           style: {background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0, fontWeight: 900}
         }, "×") : null))) : null);
       }));
-    })() : null, t.typ === "punktspiel" ? (() => {
+    })() : null, t.typ === "punktspiel" && t.spielort !== "heim" ? (() => {
       const fahrten = Object.entries(t.fahrten || {}).sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
       const ich = cu.vorname + " " + cu.nachname;
       const kommend = t.datum >= heute;
@@ -2626,10 +2636,27 @@ function TermineTab({
         const anzZu = (t.zusagen || []).length;
         const anzAb = (t.absagen || []).length;
         const anzOf = (t.vielleicht || []).length;
-        let text = `${typInfo.emoji} *${typInfo.label}: ${t.titel}*\n`;
+        let text = `${typInfo.emoji} *${typInfo.label}${t.typ === "punktspiel" && t.spielort ? " (" + (t.spielort === "heim" ? "Heimspiel" : "Auswärtsspiel") + ")" : ""}: ${t.titel}*\n`;
         text += `📅 ${wt}, ${fmtD(t.datum)} um ${t.uhrzeit} Uhr\n`;
         text += `📍 ${t.ort}\n\n`;
-        if (t.typ === "punktspiel" && MITBRINGEN.length > 0) {
+        if (t.typ === "punktspiel" && t.spielort === "auswaerts") {
+          const autos = Object.values(t.fahrten || {});
+          const frei = autos.map(f => ({name: f.name, frei: (f.plaetze || 0) - (f.mitfahrer || []).length})).filter(x => x.frei > 0);
+          const imAuto = new Set();
+          autos.forEach(f => {
+            imAuto.add(f.name);
+            (f.mitfahrer || []).forEach(n => imAuto.add(n));
+          });
+          const ohne = (t.zusagen || []).filter(n => !imAuto.has(n));
+          if (autos.length === 0) {
+            text += `🚗 *Fahrer gesucht* – bitte in der App eintragen\n\n`;
+          } else {
+            if (frei.length > 0) text += `🚗 *Freie Plätze:* ${frei.map(x => mbName(x.name) + " (" + x.frei + ")").join(", ")}\n`;
+            if (ohne.length > 0) text += `⏳ *Noch ohne Fahrt:* ${ohne.map(mbName).join(", ")}\n`;
+            if (frei.length > 0 || ohne.length > 0) text += `\n`;
+          }
+        }
+        if (t.typ === "punktspiel" && t.spielort !== "auswaerts" && MITBRINGEN.length > 0) {
           const offen = MITBRINGEN.map(p => ({p, frei: (p.anzahl || 1) - ((t.mitbringen || {})[p.key] || []).length})).filter(x => x.frei > 0);
           if (offen.length > 0) {
             text += `🧺 *Noch gesucht:* ${offen.map(x => x.p.name + (x.frei > 1 ? " (" + x.frei + "×)" : "")).join(", ")} – bitte in der App eintragen\n\n`;
@@ -3050,7 +3077,11 @@ function TermineTab({
       fontSize: 12,
       fontWeight: 700
     }
-  }, info.emoji, " ", info.label))), /*#__PURE__*/React.createElement("label", {
+  }, info.emoji, " ", info.label))), form.typ === "punktspiel" ? /*#__PURE__*/React.createElement("select", {
+    value: form.spielort || "heim",
+    onChange: e => setForm(f => ({...f, spielort: e.target.value})),
+    style: {...IS, marginTop: 0, marginBottom: 10}
+  }, /*#__PURE__*/React.createElement("option", {value: "heim"}, "🏠 Heimspiel"), /*#__PURE__*/React.createElement("option", {value: "auswaerts"}, "🚌 Auswärtsspiel")) : null, /*#__PURE__*/React.createElement("label", {
     style: {
       fontSize: 11,
       color: "#94a3b8",
