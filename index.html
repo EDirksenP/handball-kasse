@@ -1996,6 +1996,55 @@ function TermineTab({
     await ref("termine", t.id).update({["mitbringen." + punkt.key]: liste.filter(n => n !== person)});
     toast("↩️ Ausgetragen");
   };
+  const [fahrtInputs, setFahrtInputs] = useState({});
+  const fahrtOeffnen = id => setFahrtInputs(f => ({...f, [id]: {plaetze: "3", info: ""}}));
+  const fahrtSchliessen = id => setFahrtInputs(f => {
+    const n = {...f};
+    delete n[id];
+    return n;
+  });
+  const setFahrtFeld = (id, feld, wert) => setFahrtInputs(f => ({...f, [id]: {...f[id], [feld]: wert}}));
+  const fahrtAnbieten = async t => {
+    const fi = fahrtInputs[t.id];
+    if (!fi) return;
+    const plaetze = parseInt(fi.plaetze);
+    if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
+    const ich = cu.vorname + " " + cu.nachname;
+    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(ich));
+    if (bei) return toast("⚠️ Du fährst schon bei " + bei.name + " mit – erst dort austragen!");
+    await ref("termine", t.id).update({["fahrten." + cu.id]: {name: ich, plaetze: Math.min(plaetze, 8), info: (fi.info || "").trim(), mitfahrer: []}});
+    fahrtSchliessen(t.id);
+    toast("✅ Du fährst – freie Plätze: " + Math.min(plaetze, 8));
+  };
+  const fahrtMitfahren = async (t, fid) => {
+    const ich = cu.vorname + " " + cu.nachname;
+    const fahrten = t.fahrten || {};
+    const f = fahrten[fid];
+    if (!f) return;
+    if (fahrten[cu.id]) return toast("⚠️ Du fährst selbst – du kannst nicht mitfahren.");
+    const bei = Object.values(fahrten).find(x => (x.mitfahrer || []).includes(ich));
+    if (bei) return toast("⚠️ Du fährst schon bei " + bei.name + " mit.");
+    const liste = f.mitfahrer || [];
+    if (liste.length >= (f.plaetze || 0)) return toast("⚠️ Das Auto ist voll!");
+    await ref("termine", t.id).update({["fahrten." + fid + ".mitfahrer"]: [...liste, ich]});
+    toast("✅ Du fährst bei " + f.name + " mit.");
+  };
+  const fahrtAustragen = async (t, fid, person) => {
+    const f = (t.fahrten || {})[fid];
+    if (!f) return;
+    await ref("termine", t.id).update({["fahrten." + fid + ".mitfahrer"]: (f.mitfahrer || []).filter(n => n !== person)});
+    toast("↩️ Ausgetragen");
+  };
+  const fahrtAbsagen = async (t, fid) => {
+    const fahrten = t.fahrten || {};
+    const f = fahrten[fid];
+    if (!f) return;
+    if ((f.mitfahrer || []).length > 0 && !window.confirm("Diese Fahrt hat schon " + f.mitfahrer.length + " Mitfahrer. Trotzdem absagen?")) return;
+    const rest = {...fahrten};
+    delete rest[fid];
+    await ref("termine", t.id).update({fahrten: rest});
+    toast("🗑️ Fahrt abgesagt");
+  };
 
   // Nur Termine der eigenen Mannschaft
   const meineMannschaft = cu.mannschaft || "1. Herren";
@@ -2486,6 +2535,89 @@ function TermineTab({
           style: {background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0, fontWeight: 900}
         }, "×") : null))) : null);
       }));
+    })() : null, t.typ === "punktspiel" ? (() => {
+      const fahrten = Object.entries(t.fahrten || {}).sort((a, b) => (a[1].name || "").localeCompare(b[1].name || ""));
+      const ich = cu.vorname + " " + cu.nachname;
+      const kommend = t.datum >= heute;
+      if (fahrten.length === 0 && !kommend) return null;
+      const ichFahre = !!(t.fahrten || {})[cu.id];
+      const ichMitfahrer = fahrten.some(([, f]) => (f.mitfahrer || []).includes(ich));
+      const fi = fahrtInputs[t.id];
+      const inFahrt = new Set();
+      fahrten.forEach(([, f]) => {
+        inFahrt.add(f.name);
+        (f.mitfahrer || []).forEach(n => inFahrt.add(n));
+      });
+      const ohneFahrt = (t.zusagen || []).filter(n => !inFahrt.has(n));
+      const kleinBtn = {borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap"};
+      return /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)"}
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 11, color: "#38bdf8", fontWeight: 700, marginBottom: 6}
+      }, "🚗 FAHRGEMEINSCHAFTEN"), fahrten.length === 0 ? /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 12, color: "#64748b", marginBottom: 6}
+      }, "Noch keine Fahrt eingetragen.") : null, fahrten.map(([fid, f]) => {
+        const plaetze = f.plaetze || 0;
+        const mit = f.mitfahrer || [];
+        const voll = mit.length >= plaetze;
+        return /*#__PURE__*/React.createElement("div", {
+          key: fid,
+          style: {padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)"}
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap"}
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: voll ? "#4ade80" : "#e2e8f0"}
+        }, "🚗 " + mbName(f.name), /*#__PURE__*/React.createElement("span", {
+          style: {fontWeight: 400, fontSize: 11, color: "#64748b"}
+        }, " " + mit.length + "/" + plaetze + " Plätze"), f.info ? /*#__PURE__*/React.createElement("div", {
+          style: {fontWeight: 400, fontSize: 11, color: "#94a3b8"}
+        }, f.info) : null), kommend && !ichFahre && !ichMitfahrer && !voll ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => fahrtMitfahren(t, fid),
+          style: {...kleinBtn, background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.4)", color: "#38bdf8"}
+        }, "✋ Mitfahren") : null, kommend && (fid === cu.id || kannBearbeiten) ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => fahrtAbsagen(t, fid),
+          style: {...kleinBtn, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#f87171"}
+        }, "Fahrt absagen") : null), mit.length > 0 ? /*#__PURE__*/React.createElement("div", {
+          style: {display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4}
+        }, mit.map(n => /*#__PURE__*/React.createElement("span", {
+          key: n,
+          style: {display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "2px 8px", fontSize: 11, color: "#cbd5e1"}
+        }, mbName(n), kommend && (n === ich || kannBearbeiten) ? /*#__PURE__*/React.createElement("button", {
+          onClick: () => fahrtAustragen(t, fid, n),
+          style: {background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0, fontWeight: 900}
+        }, "×") : null))) : null);
+      }), kommend && !ichFahre && !ichMitfahrer && !fi ? /*#__PURE__*/React.createElement("button", {
+        onClick: () => fahrtOeffnen(t.id),
+        style: {...kleinBtn, marginTop: 8, background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.4)", color: "#38bdf8"}
+      }, "🚗 Ich fahre") : null, fi ? /*#__PURE__*/React.createElement("div", {
+        style: {marginTop: 8}
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {display: "flex", gap: 6}
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        placeholder: "Plätze",
+        value: fi.plaetze,
+        onChange: e => setFahrtFeld(t.id, "plaetze", e.target.value),
+        style: {...IS, marginTop: 0, width: 80, flex: "none", textAlign: "center"}
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        placeholder: "Treffpunkt/Zeit (optional)",
+        value: fi.info,
+        onChange: e => setFahrtFeld(t.id, "info", e.target.value),
+        style: {...IS, marginTop: 0, flex: 1, minWidth: 0}
+      })), /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 10, color: "#64748b", margin: "4px 0 6px"}
+      }, "Plätze = freie Plätze für Mitfahrer (ohne dich)"), /*#__PURE__*/React.createElement("div", {
+        style: {display: "flex", gap: 6}
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => fahrtAnbieten(t),
+        style: {...kleinBtn, flex: 1, padding: "9px", background: "linear-gradient(135deg,#0066CC,#2288FF)", border: "none", color: "white", fontSize: 13}
+      }, "✓ Eintragen"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => fahrtSchliessen(t.id),
+        style: {...kleinBtn, padding: "9px 14px", background: "rgba(255,255,255,0.05)", border: "1px solid #003070", color: "#94a3b8"}
+      }, "✕"))) : null, fahrten.length > 0 && ohneFahrt.length > 0 ? /*#__PURE__*/React.createElement("div", {
+        style: {fontSize: 11, color: "#fb923c", marginTop: 8}
+      }, "⏳ Noch ohne Fahrt: " + ohneFahrt.map(mbName).join(", ")) : null);
     })() : null, kannBearbeiten && /*#__PURE__*/React.createElement("button", {
       onClick: async () => {
         const wochentage = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
@@ -2497,6 +2629,12 @@ function TermineTab({
         let text = `${typInfo.emoji} *${typInfo.label}: ${t.titel}*\n`;
         text += `📅 ${wt}, ${fmtD(t.datum)} um ${t.uhrzeit} Uhr\n`;
         text += `📍 ${t.ort}\n\n`;
+        if (t.typ === "punktspiel" && MITBRINGEN.length > 0) {
+          const offen = MITBRINGEN.map(p => ({p, frei: (p.anzahl || 1) - ((t.mitbringen || {})[p.key] || []).length})).filter(x => x.frei > 0);
+          if (offen.length > 0) {
+            text += `🧺 *Noch gesucht:* ${offen.map(x => x.p.name + (x.frei > 1 ? " (" + x.frei + "×)" : "")).join(", ")} – bitte in der App eintragen\n\n`;
+          }
+        }
         text += `Bitte in der App zu-/absagen:\n`;
         text += `👉 https://3hsg-emden-kasse.de\n\n`;
         if (anzZu > 0 || anzAb > 0 || anzOf > 0) {
