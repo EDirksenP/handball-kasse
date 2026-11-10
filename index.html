@@ -63,6 +63,18 @@ const rolleLabel = k => {
   const r = EIGENE_ROLLEN.find(x => x.key === k);
   return r ? r.emoji + " " + r.label : k;
 };
+// Rollen eines Benutzers für Rechteprüfung/Anzeige: leere oder ungültige Einträge werden ignoriert,
+// bei kaputter Liste gilt die gespeicherte Hauptrolle
+const rollenListe = b => {
+  const l = (Array.isArray(b.rollen) ? b.rollen : []).filter(k => typeof k === "string" && k);
+  if (l.length > 0) return l;
+  return typeof b.rolle === "string" && b.rolle ? [b.rolle] : ["mitglied"];
+};
+// Beim Speichern: nur die im Formular gewählten Rollen, ohne Rückgriff auf die alte Hauptrolle
+const rollenStrikt = b => {
+  const l = (Array.isArray(b.rollen) ? b.rollen : [b.rolle]).filter(k => typeof k === "string" && k);
+  return l.length > 0 ? l : ["mitglied"];
+};
 function applyStammdaten(d) {
   if (Array.isArray(d.mannschaften) && d.mannschaften.length > 0) {
     MANNSCHAFTEN.length = 0;
@@ -624,8 +636,8 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       nachname: edit.nachname.trim(),
       benutzername: bn(edit.vorname, edit.nachname),
       passwort: edit.passwort.trim(),
-      rolle: Array.isArray(edit.rollen) && edit.rollen.length > 0 ? edit.rollen[0] : (edit.rolle||"mitglied"),
-      rollen: Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"],
+      rolle: rollenStrikt(edit).includes("admin") ? "admin" : rollenStrikt(edit)[0],
+      rollen: rollenStrikt(edit),
       mannschaft: edit.mannschaft || "1. Herren",
       guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
@@ -744,11 +756,12 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
     /*#__PURE__*/React.createElement("select", {
       value: "",
       onChange: e => {
-        if(!e.target.value) return;
-        const aktuelle = Array.isArray(edit.rollen) ? edit.rollen : [edit.rolle||"mitglied"];
-        if(!aktuelle.includes(e.target.value)) {
-          setEdit(x => ({...x, rollen: [...aktuelle, e.target.value]}));
-        }
+        const wert = e.target.value;
+        if(!wert) return;
+        setEdit(x => {
+          const akt = rollenStrikt(x);
+          return akt.includes(wert) ? x : {...x, rollen: [...akt, wert]};
+        });
         e.target.value = "";
       },
       style: {...IS, marginTop:0, marginBottom:8}
@@ -917,7 +930,9 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   }, "📅 Eventorganisation"), (Array.isArray(b.rollen) ? b.rollen : [b.rolle]).filter(k => k && k !== "mitglied" && k !== "admin" && !(k === b.rolle && (k === "strafenwart" || k === "eventorga"))).map(k => /*#__PURE__*/React.createElement("div", {
     key: k,
     style: {fontSize: 11, color: "#67e8f9", fontWeight: 700, marginTop: 2}
-  }, rolleLabel(k))), b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
+  }, rolleLabel(k))), Array.isArray(b.rollen) && b.rollen.some(k => typeof k !== "string" || !k) ? /*#__PURE__*/React.createElement("div", {
+    style: {fontSize: 11, color: "#fbbf24", fontWeight: 700, marginTop: 2}
+  }, "⚠️ Rollen prüfen – bitte neu vergeben") : null, b.rolle !== "admin" && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -945,7 +960,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       cursor: "pointer"
     }
   }, "💰"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setEdit({...b, rollen: Array.isArray(b.rollen) ? b.rollen : [b.rolle||"mitglied"]}),
+    onClick: () => setEdit({...b, rollen: rollenListe(b)}),
     style: {
       background: "rgba(34,136,255,0.1)",
       border: "1px solid rgba(34,136,255,0.3)",
@@ -5555,9 +5570,7 @@ function MainApp({
   const [zeitnahmeTermine, setZeitnahmeTermine] = useState([]);
   const [stammdaten, setStammdaten] = useState({});
   const meinBenutzer = benutzer.find(b => b.id === cu.id);
-  const meineRollen = meinBenutzer
-    ? (Array.isArray(meinBenutzer.rollen) ? meinBenutzer.rollen : [meinBenutzer.rolle || "mitglied"])
-    : (Array.isArray(cu.rollen) ? cu.rollen : [cu.rolle]);
+  const meineRollen = rollenListe(meinBenutzer || cu);
   const hasRolle = (r) => meineRollen.includes(r);
   const isAdmin = hasRolle("admin");
   const isStrafenwart = hasRolle("strafenwart") || isAdmin;
