@@ -2453,8 +2453,9 @@ function TermineTab({
   const fahrtAnbieten = async t => {
     const fi = fahrtInputs[t.id];
     if (!fi) return;
+    // 0 ist erlaubt: Fahrer fährt, nimmt aber niemanden mit.
     const plaetze = parseInt(fi.plaetze);
-    if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
+    if (isNaN(plaetze) || plaetze < 0) return toast("⚠️ Bitte die Zahl der freien Plätze angeben (0 = keine)!");
     // Admin/Eventorga dürfen einen anderen Fahrer wählen, alle anderen tragen nur sich selbst ein.
     if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
     const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
@@ -2476,7 +2477,7 @@ function TermineTab({
       }
     });
     fahrtSchliessen(t.id);
-    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + " – freie Plätze: " + Math.min(plaetze, 8));
+    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + (plaetze === 0 ? " – ohne freie Plätze" : " – freie Plätze: " + Math.min(plaetze, 8)));
   };
   const fahrtMitfahren = async (t, fid) => {
     const ich = cu.vorname + " " + cu.nachname;
@@ -2514,6 +2515,22 @@ function TermineTab({
       ["fahrten." + fid + ".mitfahrer"]: (f.mitfahrer || []).filter(n => n !== person)
     });
     toast("↩️ Ausgetragen");
+  };
+  // Plätze einer bestehenden Fahrt ändern (Fahrer selbst oder Admin/Eventorga)
+  const [platzEdit, setPlatzEdit] = useState(null);
+  const fahrtPlaetzeSpeichern = async (t, fid) => {
+    const f = (t.fahrten || {})[fid];
+    if (!f || !platzEdit) return;
+    if (fid !== cu.id && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
+    const n = parseInt(platzEdit.wert);
+    if (isNaN(n) || n < 0 || n > 8) return toast("⚠️ Bitte 0 bis 8 Plätze angeben!");
+    const belegt = (f.mitfahrer || []).length;
+    if (n < belegt) return toast("⚠️ Es fahren schon " + belegt + " mit – erst Mitfahrer austragen!");
+    await ref("termine", t.id).update({
+      ["fahrten." + fid + ".plaetze"]: n
+    });
+    setPlatzEdit(null);
+    toast(n === 0 ? "✅ " + f.name + " – keine freien Plätze" : "✅ " + f.name + " – jetzt " + n + " Plätze");
   };
   const fahrtAbsagen = async (t, fid) => {
     const fahrten = t.fahrten || {};
@@ -3262,7 +3279,7 @@ function TermineTab({
             minWidth: 0,
             fontSize: 13,
             fontWeight: 700,
-            color: voll ? "#4ade80" : "#e2e8f0"
+            color: plaetze === 0 ? "#94a3b8" : voll ? "#4ade80" : "#e2e8f0"
           }
         }, "🚗 " + mbName(f.name), React.createElement("span", {
           style: {
@@ -3270,7 +3287,7 @@ function TermineTab({
             fontSize: 11,
             color: "#64748b"
           }
-        }, " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
+        }, plaetze === 0 ? " · keine freien Plätze" : " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
           style: {
             fontWeight: 400,
             fontSize: 11,
@@ -3302,7 +3319,19 @@ function TermineTab({
         }, "➕ Mitfahrer"), fahrerOptionen.map(o => React.createElement("option", {
           key: o.id,
           value: o.id
-        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
+        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) && !(platzEdit && platzEdit.key === t.id + "|" + fid) ? React.createElement("button", {
+          onClick: () => setPlatzEdit({
+            key: t.id + "|" + fid,
+            wert: String(plaetze)
+          }),
+          title: "Plätze ändern",
+          style: {
+            ...kleinBtn,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #003070",
+            color: "#94a3b8"
+          }
+        }, "✏️ Plätze") : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
           onClick: () => fahrtAbsagen(t, fid),
           style: {
             ...kleinBtn,
@@ -3310,7 +3339,59 @@ function TermineTab({
             border: "1px solid rgba(248,113,113,0.3)",
             color: "#f87171"
           }
-        }, "Fahrt absagen") : null), mit.length > 0 ? React.createElement("div", {
+        }, "Fahrt absagen") : null), platzEdit && platzEdit.key === t.id + "|" + fid ? React.createElement("div", {
+          style: {
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            marginTop: 6
+          }
+        }, React.createElement("input", {
+          type: "number",
+          min: mit.length,
+          max: 8,
+          autoFocus: true,
+          value: platzEdit.wert,
+          onChange: e => setPlatzEdit({
+            ...platzEdit,
+            wert: e.target.value
+          }),
+          onKeyDown: e => {
+            if (e.key === "Enter") fahrtPlaetzeSpeichern(t, fid);
+            if (e.key === "Escape") setPlatzEdit(null);
+          },
+          style: {
+            ...IS,
+            marginTop: 0,
+            width: 80,
+            flex: "none",
+            textAlign: "center"
+          }
+        }), React.createElement("div", {
+          style: {
+            flex: 1,
+            fontSize: 10,
+            color: "#64748b"
+          }
+        }, "freie Plätze (0 = keine" + (mit.length > 0 ? ", mind. " + mit.length + " wegen Mitfahrern" : "") + ")"), React.createElement("button", {
+          onClick: () => fahrtPlaetzeSpeichern(t, fid),
+          style: {
+            ...kleinBtn,
+            padding: "8px 12px",
+            background: "linear-gradient(135deg,#0066CC,#2288FF)",
+            border: "none",
+            color: "white"
+          }
+        }, "✓"), React.createElement("button", {
+          onClick: () => setPlatzEdit(null),
+          style: {
+            ...kleinBtn,
+            padding: "8px 12px",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #003070",
+            color: "#94a3b8"
+          }
+        }, "✕")) : null, mit.length > 0 ? React.createElement("div", {
           style: {
             display: "flex",
             flexWrap: "wrap",
@@ -3393,6 +3474,8 @@ function TermineTab({
         }
       }, React.createElement("input", {
         type: "number",
+        min: 0,
+        max: 8,
         placeholder: "Plätze",
         value: fi.plaetze,
         onChange: e => setFahrtFeld(t.id, "plaetze", e.target.value),
@@ -3420,7 +3503,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
+      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer, 0 = keine) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich, 0 = keine)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
