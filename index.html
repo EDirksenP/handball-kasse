@@ -41,6 +41,19 @@ const {
 } = React;
 const col = n => window.db.collection(n);
 const ref = (n, id) => window.db.collection(n).doc(id);
+// Guthaben nur per atomarem increment ändern – nie "alter Wert ± Betrag" schreiben,
+// sonst überschreiben sich gleichzeitige Buchungen von zwei Geräten gegenseitig.
+const cent = x => Math.round(x * 100) / 100;
+const gutDelta = betrag => firebase.firestore.FieldValue.increment(cent(betrag));
+const benutzerZuName = (benutzer, name) => benutzer.find(b => b.vorname + " " + b.nachname === name);
+// Für Werte, die per document.write in HTML (Druckansichten) eingesetzt werden.
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;"
+})[c]);
 const AUTH_KEY = "hsg_auth_v3";
 const MANNSCHAFTEN = ["1. Herren", "2. Herren", "3. Herren", "1. Damen", "2. Damen", "3. Damen"];
 const MANNSCHAFTEN_STANDARD = [...MANNSCHAFTEN];
@@ -597,9 +610,9 @@ function BenutzerTab({
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
 <style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:20px}.header h1{color:#003F8A;font-size:22px;margin:0 0 4px 0}.header h2{font-size:15px;color:#333;margin:0;font-weight:normal}table{width:100%;border-collapse:collapse}th{background:#003F8A;color:white;padding:10px 12px;text-align:left;font-size:13px}td{padding:9px 12px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:24px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px}</style>
 </head><body>
-<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
+<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${esc(pdfMannschaft)} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
 <table><thead><tr><th>#</th><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th><th>Kategorie</th>${mitVerein ? "<th>Verein</th>" : ""}</tr></thead>
-<tbody>${mitglieder.map((b, i) => `<tr><td>${i + 1}</td><td>${b.trikotnummer || ""}</td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position || ""}</td><td><strong>${b.handballId || ""}</strong></td><td>${b.kategorie === "azubi" ? "Azubi/Schüler" : "Arbeiter"}</td>${mitVerein ? "<td>" + vereinName(b.verein) + "</td>" : ""}</tr>`).join("")}</tbody></table>
+<tbody>${mitglieder.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.trikotnummer)}</td><td>${esc(b.vorname)}</td><td>${esc(b.nachname)}</td><td>${esc(b.position)}</td><td><strong>${esc(b.handballId)}</strong></td><td>${b.kategorie === "azubi" ? "Azubi/Schüler" : "Arbeiter"}</td>${mitVerein ? "<td>" + esc(vereinName(b.verein)) + "</td>" : ""}</tr>`).join("")}</tbody></table>
 <div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
 </body></html>`;
     const win = window.open("", "_blank");
@@ -716,7 +729,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   };
   const saveEdit = async () => {
     if (!edit.vorname.trim() || !edit.nachname.trim()) return;
-    await ref("benutzer", edit.id).set({
+    await ref("benutzer", edit.id).update({
       vorname: edit.vorname.trim(),
       nachname: edit.nachname.trim(),
       benutzername: bn(edit.vorname, edit.nachname),
@@ -724,7 +737,6 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       rolle: rollenStrikt(edit).includes("admin") ? "admin" : rollenStrikt(edit)[0],
       rollen: rollenStrikt(edit),
       mannschaft: edit.mannschaft || "1. Herren",
-      guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
       handballId: edit.handballId || "",
       trikotnummer: edit.trikotnummer || "",
@@ -739,7 +751,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
     const b = parseFloat(gutVal.replace(",", "."));
     if (!b || b <= 0) return toast("Bitte gültigen Betrag eingeben!");
     await ref("benutzer", gutModal.id).update({
-      guthaben: (gutModal.guthaben || 0) + b
+      guthaben: gutDelta(b)
     });
     setGutModal(null);
     setGutVal("");
@@ -1787,25 +1799,47 @@ function StrafenTab({
     const bu = benutzer.find(b => b.vorname + " " + b.nachname === e.person);
     if (!bu) return toast("⚠️ Benutzer nicht gefunden!");
     if ((bu.guthaben || 0) < e.betrag) return toast("⚠️ Nicht genug Guthaben!");
-    await ref("strafen", e.id).update({
+    const batch = window.db.batch();
+    batch.update(ref("strafen", e.id), {
       bezahlt: true,
       zahlart: "guthaben",
+      guthabenBenutzerId: bu.id,
       bezahltAm: new Date().toLocaleDateString("de-DE"),
       bezahltDatum: new Date().toISOString().slice(0, 10)
     });
-    await ref("benutzer", bu.id).update({
-      guthaben: Math.round(((bu.guthaben || 0) - e.betrag) * 100) / 100
+    batch.update(ref("benutzer", bu.id), {
+      guthaben: gutDelta(-e.betrag)
     });
+    await batch.commit();
     toast(`✅ ${e.betrag.toFixed(2)} € vom Guthaben von ${e.person} abgezogen!`);
   };
-  const stornieren = async e => {
-    await ref("strafen", e.id).update({
-      bezahlt: false
+  const guthabenZurueck = (batch, e) => {
+    if (!e || !e.bezahlt || e.zahlart !== "guthaben") return true;
+    const buId = e.guthabenBenutzerId || benutzerZuName(benutzer, e.person)?.id;
+    if (!buId) return false;
+    batch.update(ref("benutzer", buId), {
+      guthaben: gutDelta(e.betrag || 0)
     });
-    toast(`↩️ Zahlung wieder als offen markiert`);
+    return true;
+  };
+  const stornieren = async e => {
+    const batch = window.db.batch();
+    if (!guthabenZurueck(batch, e)) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
+    const del = firebase.firestore.FieldValue.delete();
+    batch.update(ref("strafen", e.id), {
+      bezahlt: false,
+      zahlart: del,
+      guthabenBenutzerId: del
+    });
+    await batch.commit();
+    toast(e.zahlart === "guthaben" ? `↩️ Zahlung storniert, ${(e.betrag || 0).toFixed(2)} € zurück aufs Guthaben` : `↩️ Zahlung wieder als offen markiert`);
   };
   const loeschen = async id => {
-    await ref("strafen", id).delete();
+    const e = strafenEintraege.find(x => x.id === id);
+    const batch = window.db.batch();
+    if (!guthabenZurueck(batch, e)) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
+    batch.delete(ref("strafen", id));
+    await batch.commit();
     toast("🗑️ Strafe gelöscht");
   };
   const eigeneSpielerIds = new Set(eigeneSpieler.map(sp => sp.id));
@@ -2392,11 +2426,14 @@ function TermineTab({
     toast("↩️ Ausgetragen");
   };
   const [fahrtInputs, setFahrtInputs] = useState({});
-  const fahrtOeffnen = id => setFahrtInputs(f => ({
+  // selbst = true: "Ich fahre" (Fahrer fest = ich), sonst Admin-Auswahl "Fahrer eintragen"
+  const fahrtOeffnen = (id, selbst) => setFahrtInputs(f => ({
     ...f,
     [id]: {
       plaetze: "3",
-      info: ""
+      info: "",
+      fahrerId: selbst ? cu.id : "",
+      selbst: !!selbst
     }
   }));
   const fahrtSchliessen = id => setFahrtInputs(f => {
@@ -2418,19 +2455,28 @@ function TermineTab({
     if (!fi) return;
     const plaetze = parseInt(fi.plaetze);
     if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
-    const ich = cu.vorname + " " + cu.nachname;
-    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(ich));
-    if (bei) return toast("⚠️ Du fährst schon bei " + bei.name + " mit – erst dort austragen!");
+    // Admin/Eventorga dürfen einen anderen Fahrer wählen, alle anderen tragen nur sich selbst ein.
+    if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
+    const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
+    const selbst = fahrerId === cu.id;
+    const name = selbst ? cu.vorname + " " + cu.nachname : fi.fahrerName;
+    if (!name) return toast("⚠️ Bitte auswählen, wer fährt!");
+    if ((t.fahrten || {})[fahrerId]) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " bereits.");
+    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(name));
+    if (bei) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " schon bei " + bei.name + " mit – erst dort austragen!");
     await ref("termine", t.id).update({
-      ["fahrten." + cu.id]: {
-        name: ich,
+      ["fahrten." + fahrerId]: {
+        name,
         plaetze: Math.min(plaetze, 8),
         info: (fi.info || "").trim(),
-        mitfahrer: []
+        mitfahrer: [],
+        ...(selbst ? {} : {
+          eingetragenVon: cu.benutzername
+        })
       }
     });
     fahrtSchliessen(t.id);
-    toast("✅ Du fährst – freie Plätze: " + Math.min(plaetze, 8));
+    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + " – freie Plätze: " + Math.min(plaetze, 8));
   };
   const fahrtMitfahren = async (t, fid) => {
     const ich = cu.vorname + " " + cu.nachname;
@@ -2446,6 +2492,20 @@ function TermineTab({
       ["fahrten." + fid + ".mitfahrer"]: [...liste, ich]
     });
     toast("✅ Du fährst bei " + f.name + " mit.");
+  };
+  const fahrtMitfahrerEintragen = async (t, fid, person) => {
+    if (!kannBearbeiten || !person) return;
+    const fahrten = t.fahrten || {};
+    const f = fahrten[fid];
+    if (!f) return;
+    const bei = Object.values(fahrten).find(x => x.name === person || (x.mitfahrer || []).includes(person));
+    if (bei) return toast("⚠️ " + person + (bei.name === person ? " fährt selbst." : " fährt schon bei " + bei.name + " mit."));
+    const liste = f.mitfahrer || [];
+    if (liste.length >= (f.plaetze || 0)) return toast("⚠️ Das Auto ist voll!");
+    await ref("termine", t.id).update({
+      ["fahrten." + fid + ".mitfahrer"]: [...liste, person]
+    });
+    toast("✅ " + person + " fährt bei " + f.name + " mit.");
   };
   const fahrtAustragen = async (t, fid, person) => {
     const f = (t.fahrten || {})[fid];
@@ -3133,6 +3193,25 @@ function TermineTab({
         (f.mitfahrer || []).forEach(n => inFahrt.add(n));
       });
       const ohneFahrt = (t.zusagen || []).filter(n => !inFahrt.has(n));
+      // Auswahl für Fahrer/Mitfahrer (nur Admin/Eventorga). Zusagen speichern Namen aus der
+      // Spielerliste, daher wird über Namen gearbeitet: Rückmelder dieses Termins, Spieler und
+      // Benutzer der Mannschaft. Schlüssel einer Fahrt = Benutzer-ID, sonst Spieler-ID, sonst Name.
+      const zusagen = t.zusagen || [];
+      const vielleichtNamen = (t.vielleicht || []).map(v => v.name || v);
+      const teamName = t.mannschaft || meineMannschaft;
+      const kandidatNamen = kannBearbeiten ? [...new Set([...zusagen, ...vielleichtNamen, ...eigeneSpieler.map(sp => sp.name), ...benutzer.filter(b => (b.mannschaft || "1. Herren") === teamName).map(b => b.vorname + " " + b.nachname)])] : [];
+      const fahrerOptionen = kandidatNamen.filter(n => n && n.trim()).map(n => {
+        const bu = benutzer.find(b => b.vorname + " " + b.nachname === n);
+        const sp = spieler.find(x => x.name === n);
+        return {
+          id: bu ? bu.id : sp ? "sp_" + sp.id : "n_" + n.replace(/[^A-Za-z0-9]/g, "_"),
+          name: n
+        };
+      }).filter(o => !inFahrt.has(o.name) && !(t.fahrten || {})[o.id]).sort((a, b) => {
+        const rang = o => zusagen.includes(o.name) ? 0 : vielleichtNamen.includes(o.name) ? 1 : 2;
+        return rang(a) - rang(b) || a.name.localeCompare(b.name);
+      });
+      const optLabel = o => (o.id === cu.id ? "Ich (" + o.name + ")" : o.name) + (zusagen.includes(o.name) ? " ✅" : vielleichtNamen.includes(o.name) ? " ❓" : "");
       const kleinBtn = {
         borderRadius: 8,
         padding: "5px 10px",
@@ -3205,7 +3284,25 @@ function TermineTab({
             border: "1px solid rgba(56,189,248,0.4)",
             color: "#38bdf8"
           }
-        }, "✋ Mitfahren") : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
+        }, "✋ Mitfahren") : null, kommend && kannBearbeiten && !voll && fahrerOptionen.length > 0 ? React.createElement("select", {
+          value: "",
+          onChange: e => {
+            const o = fahrerOptionen.find(x => x.id === e.target.value);
+            if (o) fahrtMitfahrerEintragen(t, fid, o.name);
+          },
+          style: {
+            ...kleinBtn,
+            background: "rgba(74,222,128,0.1)",
+            border: "1px solid rgba(74,222,128,0.35)",
+            color: "#4ade80",
+            maxWidth: 150
+          }
+        }, React.createElement("option", {
+          value: ""
+        }, "➕ Mitfahrer"), fahrerOptionen.map(o => React.createElement("option", {
+          key: o.id,
+          value: o.id
+        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
           onClick: () => fahrtAbsagen(t, fid),
           style: {
             ...kleinBtn,
@@ -3245,20 +3342,51 @@ function TermineTab({
             fontWeight: 900
           }
         }, "×") : null))) : null);
-      }), kommend && !ichFahre && !ichMitfahrer && !fi ? React.createElement("button", {
-        onClick: () => fahrtOeffnen(t.id),
+      }), kommend && !fi && (!ichFahre && !ichMitfahrer || kannBearbeiten && fahrerOptionen.length > 0) ? React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 6,
+          flexWrap: "wrap",
+          marginTop: 8
+        }
+      }, !ichFahre && !ichMitfahrer ? React.createElement("button", {
+        onClick: () => fahrtOeffnen(t.id, true),
         style: {
           ...kleinBtn,
-          marginTop: 8,
           background: "rgba(56,189,248,0.12)",
           border: "1px solid rgba(56,189,248,0.4)",
           color: "#38bdf8"
         }
-      }, "🚗 Ich fahre") : null, fi ? React.createElement("div", {
+      }, "🚗 Ich fahre") : null, kannBearbeiten && fahrerOptionen.length > 0 ? React.createElement("button", {
+        onClick: () => fahrtOeffnen(t.id, false),
+        style: {
+          ...kleinBtn,
+          background: "rgba(167,139,250,0.12)",
+          border: "1px solid rgba(167,139,250,0.4)",
+          color: "#a78bfa"
+        }
+      }, "👥 Fahrer eintragen") : null) : null, fi ? React.createElement("div", {
         style: {
           marginTop: 8
         }
-      }, React.createElement("div", {
+      }, kannBearbeiten && !fi.selbst ? React.createElement("select", {
+        value: fi.fahrerId,
+        onChange: e => {
+          const o = fahrerOptionen.find(x => x.id === e.target.value);
+          setFahrtFeld(t.id, "fahrerId", e.target.value);
+          setFahrtFeld(t.id, "fahrerName", o ? o.name : "");
+        },
+        style: {
+          ...IS,
+          marginTop: 0,
+          marginBottom: 6
+        }
+      }, React.createElement("option", {
+        value: ""
+      }, "– Wer fährt? –"), fahrerOptionen.map(o => React.createElement("option", {
+        key: o.id,
+        value: o.id
+      }, optLabel(o)))) : null, React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
@@ -3292,7 +3420,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
+      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
@@ -3460,10 +3588,10 @@ function TermineTab({
   <h1>🤾 3. Herren HSG Emden</h1>
   <h2>Spielberechtigungsnachweis</h2>
   <div class="meta">
-    <span>🏆 ${t.titel}</span>
+    <span>🏆 ${esc(t.titel)}</span>
     <span>📅 ${datumStr}</span>
-    <span>🕐 ${t.uhrzeit} Uhr</span>
-    <span>📍 ${t.ort}</span>
+    <span>🕐 ${esc(t.uhrzeit)} Uhr</span>
+    <span>📍 ${esc(t.ort)}</span>
   </div>
 </div>
 <div style="margin-bottom:10px; font-size:13px;">
@@ -3493,11 +3621,11 @@ function TermineTab({
     ${alleZeilen.map((sp, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${sp.trikotnummer}</td>
-      <td>${sp.vorname}</td>
-      <td>${sp.nachname}</td>
-      <td>${sp.position}</td>
-      <td><strong>${sp.handballId}</strong></td>
+      <td>${esc(sp.trikotnummer)}</td>
+      <td>${esc(sp.vorname)}</td>
+      <td>${esc(sp.nachname)}</td>
+      <td>${esc(sp.position)}</td>
+      <td><strong>${esc(sp.handballId)}</strong></td>
       <td class="${sp.status === "✅" ? "status-ok" : sp.status === "Gast" ? "status-gast" : "status-vl"}">${sp.status}</td>
       <td class="check"><span class="checkbox">${(sp.position || "").startsWith("Feldspieler") ? "✓" : ""}</span></td>
       <td class="check"><span class="checkbox">${sp.position === "Torwart" ? "✓" : ""}</span></td>
@@ -6480,11 +6608,12 @@ function MainApp({
     if (zahlart === "guthaben") {
       if (!gwBu) return toast("⚠️ Kein Benutzer für diesen Spieler gefunden!");
       if (gut < g.preis) return toast(`⚠️ Guthaben reicht nicht! (${gut.toFixed(2)} €)`);
-      await ref("benutzer", gwBu.id).update({
-        guthaben: gut - g.preis
-      });
     }
-    await col("eintraege").add({
+    const batch = window.db.batch();
+    if (zahlart === "guthaben") batch.update(ref("benutzer", gwBu.id), {
+      guthaben: gutDelta(-g.preis)
+    });
+    batch.set(col("eintraege").doc(), {
       typ,
       betrag: g.preis,
       beschreibung: g.name,
@@ -6499,8 +6628,12 @@ function MainApp({
       }),
       gebuchtvon: cu.benutzername,
       zahlart,
+      ...(zahlart === "guthaben" ? {
+        guthabenBenutzerId: gwBu.id
+      } : {}),
       ts: Date.now()
     });
+    await batch.commit();
     toast(`✅ ${g.emoji} ${g.name} für ${sp.name}! (${zahlart === "guthaben" ? "💰 Guthaben" : "💵 Direkt"})`);
   };
   const buchG = async g => buchArtikel(g, "getraenk");
@@ -6585,7 +6718,17 @@ function MainApp({
     toast("✅ Gespeichert");
   };
   const delE = async id => {
-    await ref("eintraege", id).delete();
+    const e = eintraege.find(x => x.id === id);
+    const batch = window.db.batch();
+    if (e && e.zahlart === "guthaben") {
+      const buId = e.guthabenBenutzerId || benutzerZuName(benutzer, e.person)?.id;
+      if (!buId) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
+      batch.update(ref("benutzer", buId), {
+        guthaben: gutDelta(e.betrag || 0)
+      });
+    }
+    batch.delete(ref("eintraege", id));
+    await batch.commit();
     toast("🗑️ Gelöscht");
   };
   const ein = eintraege.filter(e => e.typ === "einnahme").reduce((s, e) => s + e.betrag, 0);
@@ -9500,7 +9643,7 @@ function MainApp({
       if (!qrModal) return;
       const url = "https://3hsg-emden-kasse.de?buche=" + qrModal.id;
       const win = window.open("", "_blank");
-      win.document.write("<!DOCTYPE html><html><head><title>QR " + qrModal.name + "</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>" + qrModal.emoji + " " + qrModal.name + " — " + qrModal.preis.toFixed(2) + " €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>" + url + "</p><script>new QRCode(document.getElementById('qr'),{text:'" + url + "',width:300,height:300});<\/script></body></html>");
+      win.document.write("<!DOCTYPE html><html><head><title>QR " + esc(qrModal.name) + "</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>" + esc(qrModal.emoji) + " " + esc(qrModal.name) + " — " + qrModal.preis.toFixed(2) + " €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>" + url + "</p><script>new QRCode(document.getElementById('qr'),{text:'" + url + "',width:300,height:300});<\/script></body></html>");
       win.document.close();
       setTimeout(() => win.print(), 800);
     },
