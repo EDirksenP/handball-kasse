@@ -2430,7 +2430,8 @@ function TermineTab({
     ...f,
     [id]: {
       plaetze: "3",
-      info: ""
+      info: "",
+      fahrerId: ""
     }
   }));
   const fahrtSchliessen = id => setFahrtInputs(f => {
@@ -2452,19 +2453,29 @@ function TermineTab({
     if (!fi) return;
     const plaetze = parseInt(fi.plaetze);
     if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
-    const ich = cu.vorname + " " + cu.nachname;
-    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(ich));
-    if (bei) return toast("⚠️ Du fährst schon bei " + bei.name + " mit – erst dort austragen!");
+    // Admin/Eventorga dürfen einen anderen Fahrer wählen, alle anderen tragen nur sich selbst ein.
+    if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
+    const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
+    const selbst = fahrerId === cu.id;
+    const fahrerBu = selbst ? cu : benutzer.find(b => b.id === fahrerId);
+    if (!fahrerBu) return toast("⚠️ Bitte einen Fahrer auswählen!");
+    const name = fahrerBu.vorname + " " + fahrerBu.nachname;
+    if ((t.fahrten || {})[fahrerId]) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " bereits.");
+    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(name));
+    if (bei) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " schon bei " + bei.name + " mit – erst dort austragen!");
     await ref("termine", t.id).update({
-      ["fahrten." + cu.id]: {
-        name: ich,
+      ["fahrten." + fahrerId]: {
+        name,
         plaetze: Math.min(plaetze, 8),
         info: (fi.info || "").trim(),
-        mitfahrer: []
+        mitfahrer: [],
+        ...(selbst ? {} : {
+          eingetragenVon: cu.benutzername
+        })
       }
     });
     fahrtSchliessen(t.id);
-    toast("✅ Du fährst – freie Plätze: " + Math.min(plaetze, 8));
+    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + " – freie Plätze: " + Math.min(plaetze, 8));
   };
   const fahrtMitfahren = async (t, fid) => {
     const ich = cu.vorname + " " + cu.nachname;
@@ -3167,6 +3178,14 @@ function TermineTab({
         (f.mitfahrer || []).forEach(n => inFahrt.add(n));
       });
       const ohneFahrt = (t.zusagen || []).filter(n => !inFahrt.has(n));
+      // Auswahl möglicher Fahrer (nur Admin/Eventorga): Benutzer der Mannschaft, die noch nicht fahren
+      // oder mitfahren; Zusagen zuerst.
+      const zusagen = t.zusagen || [];
+      const fahrerOptionen = kannBearbeiten ? benutzer.filter(b => (b.mannschaft || "1. Herren") === (t.mannschaft || meineMannschaft)).filter(b => !inFahrt.has(b.vorname + " " + b.nachname) && !(t.fahrten || {})[b.id]).sort((a, b) => {
+        const za = zusagen.includes(a.vorname + " " + a.nachname) ? 0 : 1;
+        const zb = zusagen.includes(b.vorname + " " + b.nachname) ? 0 : 1;
+        return za - zb || (a.vorname + a.nachname).localeCompare(b.vorname + b.nachname);
+      }) : [];
       const kleinBtn = {
         borderRadius: 8,
         padding: "5px 10px",
@@ -3279,7 +3298,7 @@ function TermineTab({
             fontWeight: 900
           }
         }, "×") : null))) : null);
-      }), kommend && !ichFahre && !ichMitfahrer && !fi ? React.createElement("button", {
+      }), kommend && !fi && (kannBearbeiten ? fahrerOptionen.length > 0 : !ichFahre && !ichMitfahrer) ? React.createElement("button", {
         onClick: () => fahrtOeffnen(t.id),
         style: {
           ...kleinBtn,
@@ -3288,11 +3307,24 @@ function TermineTab({
           border: "1px solid rgba(56,189,248,0.4)",
           color: "#38bdf8"
         }
-      }, "🚗 Ich fahre") : null, fi ? React.createElement("div", {
+      }, kannBearbeiten ? "🚗 Fahrer eintragen" : "🚗 Ich fahre") : null, fi ? React.createElement("div", {
         style: {
           marginTop: 8
         }
-      }, React.createElement("div", {
+      }, kannBearbeiten ? React.createElement("select", {
+        value: fi.fahrerId,
+        onChange: e => setFahrtFeld(t.id, "fahrerId", e.target.value),
+        style: {
+          ...IS,
+          marginTop: 0,
+          marginBottom: 6
+        }
+      }, React.createElement("option", {
+        value: ""
+      }, "– Wer fährt? –"), fahrerOptionen.map(b => React.createElement("option", {
+        key: b.id,
+        value: b.id
+      }, (b.id === cu.id ? "Ich (" + b.vorname + " " + b.nachname + ")" : b.vorname + " " + b.nachname) + (zusagen.includes(b.vorname + " " + b.nachname) ? " ✅" : "")))) : null, React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
@@ -3326,7 +3358,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
+      }, kannBearbeiten ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ = hat zugesagt" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
