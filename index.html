@@ -2459,9 +2459,8 @@ function TermineTab({
     if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
     const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
     const selbst = fahrerId === cu.id;
-    const fahrerBu = selbst ? cu : benutzer.find(b => b.id === fahrerId);
-    if (!fahrerBu) return toast("⚠️ Bitte einen Fahrer auswählen!");
-    const name = fahrerBu.vorname + " " + fahrerBu.nachname;
+    const name = selbst ? cu.vorname + " " + cu.nachname : fi.fahrerName;
+    if (!name) return toast("⚠️ Bitte auswählen, wer fährt!");
     if ((t.fahrten || {})[fahrerId]) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " bereits.");
     const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(name));
     if (bei) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " schon bei " + bei.name + " mit – erst dort austragen!");
@@ -3194,17 +3193,25 @@ function TermineTab({
         (f.mitfahrer || []).forEach(n => inFahrt.add(n));
       });
       const ohneFahrt = (t.zusagen || []).filter(n => !inFahrt.has(n));
-      // Auswahl möglicher Fahrer (nur Admin/Eventorga): Benutzer der Mannschaft, die noch nicht fahren
-      // oder mitfahren; Zusagen zuerst.
+      // Auswahl für Fahrer/Mitfahrer (nur Admin/Eventorga). Zusagen speichern Namen aus der
+      // Spielerliste, daher wird über Namen gearbeitet: Rückmelder dieses Termins, Spieler und
+      // Benutzer der Mannschaft. Schlüssel einer Fahrt = Benutzer-ID, sonst Spieler-ID, sonst Name.
       const zusagen = t.zusagen || [];
-      // Wer zu- oder vielleicht-gesagt hat, wird immer angeboten – auch wenn das Mannschaftsfeld
-      // im Benutzerkonto fehlt oder abweicht.
-      const rueckmelder = new Set([...zusagen, ...(t.vielleicht || []).map(v => v.name || v)]);
-      const fahrerOptionen = kannBearbeiten ? benutzer.filter(b => (b.mannschaft || "1. Herren") === (t.mannschaft || meineMannschaft) || rueckmelder.has(b.vorname + " " + b.nachname)).filter(b => !inFahrt.has(b.vorname + " " + b.nachname) && !(t.fahrten || {})[b.id]).sort((a, b) => {
-        const za = zusagen.includes(a.vorname + " " + a.nachname) ? 0 : 1;
-        const zb = zusagen.includes(b.vorname + " " + b.nachname) ? 0 : 1;
-        return za - zb || (a.vorname + a.nachname).localeCompare(b.vorname + b.nachname);
-      }) : [];
+      const vielleichtNamen = (t.vielleicht || []).map(v => v.name || v);
+      const teamName = t.mannschaft || meineMannschaft;
+      const kandidatNamen = kannBearbeiten ? [...new Set([...zusagen, ...vielleichtNamen, ...eigeneSpieler.map(sp => sp.name), ...benutzer.filter(b => (b.mannschaft || "1. Herren") === teamName).map(b => b.vorname + " " + b.nachname)])] : [];
+      const fahrerOptionen = kandidatNamen.filter(n => n && n.trim()).map(n => {
+        const bu = benutzer.find(b => b.vorname + " " + b.nachname === n);
+        const sp = spieler.find(x => x.name === n);
+        return {
+          id: bu ? bu.id : sp ? "sp_" + sp.id : "n_" + n.replace(/[^A-Za-z0-9]/g, "_"),
+          name: n
+        };
+      }).filter(o => !inFahrt.has(o.name) && !(t.fahrten || {})[o.id]).sort((a, b) => {
+        const rang = o => zusagen.includes(o.name) ? 0 : vielleichtNamen.includes(o.name) ? 1 : 2;
+        return rang(a) - rang(b) || a.name.localeCompare(b.name);
+      });
+      const optLabel = o => (o.id === cu.id ? "Ich (" + o.name + ")" : o.name) + (zusagen.includes(o.name) ? " ✅" : vielleichtNamen.includes(o.name) ? " ❓" : "");
       const kleinBtn = {
         borderRadius: 8,
         padding: "5px 10px",
@@ -3280,8 +3287,8 @@ function TermineTab({
         }, "✋ Mitfahren") : null, kommend && kannBearbeiten && !voll && fahrerOptionen.length > 0 ? React.createElement("select", {
           value: "",
           onChange: e => {
-            const b = fahrerOptionen.find(x => x.id === e.target.value);
-            if (b) fahrtMitfahrerEintragen(t, fid, b.vorname + " " + b.nachname);
+            const o = fahrerOptionen.find(x => x.id === e.target.value);
+            if (o) fahrtMitfahrerEintragen(t, fid, o.name);
           },
           style: {
             ...kleinBtn,
@@ -3292,10 +3299,10 @@ function TermineTab({
           }
         }, React.createElement("option", {
           value: ""
-        }, "➕ Mitfahrer"), fahrerOptionen.map(b => React.createElement("option", {
-          key: b.id,
-          value: b.id
-        }, b.vorname + " " + b.nachname + (zusagen.includes(b.vorname + " " + b.nachname) ? " ✅" : "")))) : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
+        }, "➕ Mitfahrer"), fahrerOptionen.map(o => React.createElement("option", {
+          key: o.id,
+          value: o.id
+        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
           onClick: () => fahrtAbsagen(t, fid),
           style: {
             ...kleinBtn,
@@ -3364,7 +3371,11 @@ function TermineTab({
         }
       }, kannBearbeiten && !fi.selbst ? React.createElement("select", {
         value: fi.fahrerId,
-        onChange: e => setFahrtFeld(t.id, "fahrerId", e.target.value),
+        onChange: e => {
+          const o = fahrerOptionen.find(x => x.id === e.target.value);
+          setFahrtFeld(t.id, "fahrerId", e.target.value);
+          setFahrtFeld(t.id, "fahrerName", o ? o.name : "");
+        },
         style: {
           ...IS,
           marginTop: 0,
@@ -3372,10 +3383,10 @@ function TermineTab({
         }
       }, React.createElement("option", {
         value: ""
-      }, "– Wer fährt? –"), fahrerOptionen.map(b => React.createElement("option", {
-        key: b.id,
-        value: b.id
-      }, (b.id === cu.id ? "Ich (" + b.vorname + " " + b.nachname + ")" : b.vorname + " " + b.nachname) + (zusagen.includes(b.vorname + " " + b.nachname) ? " ✅" : "")))) : null, React.createElement("div", {
+      }, "– Wer fährt? –"), fahrerOptionen.map(o => React.createElement("option", {
+        key: o.id,
+        value: o.id
+      }, optLabel(o)))) : null, React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
@@ -3409,7 +3420,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ = hat zugesagt" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
+      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
