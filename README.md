@@ -1,16 +1,45 @@
-# React + Vite
+# Handball-Kasse – 3. Herren HSG Emden
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web-App für Mannschaftskasse, Getränke-/Guthabenbuchungen, Strafen, Termine
+mit Zu-/Absagen und Fahrgemeinschaften, Zeitnahme und Schwarzes Brett.
 
-Currently, two official plugins are available:
+Live: https://3hsg-emden-kasse.de
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Aufbau
 
-## React Compiler
+- **Eine Datei:** Die komplette App steckt in `index.html` (React 18 und
+  Firebase werden per `<script>` vom CDN geladen). Es gibt **keinen
+  Build-Schritt** und keinen weiteren Quellcode – Änderungen werden direkt in
+  `index.html` gemacht.
+- **Daten:** Firebase Firestore (Projekt `handball-kasse`). Die Collections
+  werden in der App live abonniert (`benutzer`, `spieler`, `eintraege`,
+  `strafen`, `termine`, `getraenke`, `sonstiges`, `mannschaftskasse`,
+  `zeitnahme`, `schwarzesbrett`, `strafenkatalog`, `stammdaten`).
+- **Hosting:** Vercel, Konfiguration in `vercel.json` (statische Auslieferung,
+  alle Pfade auf `index.html`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Deployment
 
-## Expanding the ESLint configuration
+- Jeder Push auf `main` wird von Vercel automatisch live geschaltet.
+- Jeder andere Branch bzw. Pull Request bekommt eine Preview-URL.
+  **Achtung:** Previews verwenden dieselbe Firestore-Datenbank wie die
+  Live-App – Testbuchungen dort sind echte Daten.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Lokal ansehen
+
+Da es keinen Build gibt, reicht ein beliebiger statischer Webserver, z. B.:
+
+```bash
+python3 -m http.server 8000
+```
+
+Dann http://localhost:8000 öffnen. Auch lokal wird die echte Datenbank
+verwendet.
+
+## Bekannte Baustellen
+
+- **Anmeldung:** Geplant ist die Umstellung auf Firebase Authentication mit
+  Firestore Security Rules.
+- **Zuordnung über Namen:** Spieler, Benutzer, Zusagen und Mitfahrer werden
+  größtenteils über den Namen verknüpft. Umbenennungen können Verknüpfungen
+  brechen.
