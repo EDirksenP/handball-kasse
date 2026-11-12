@@ -2516,6 +2516,22 @@ function TermineTab({
     });
     toast("↩️ Ausgetragen");
   };
+  // Plätze einer bestehenden Fahrt ändern (Fahrer selbst oder Admin/Eventorga)
+  const [platzEdit, setPlatzEdit] = useState(null);
+  const fahrtPlaetzeSpeichern = async (t, fid) => {
+    const f = (t.fahrten || {})[fid];
+    if (!f || !platzEdit) return;
+    if (fid !== cu.id && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
+    const n = parseInt(platzEdit.wert);
+    if (isNaN(n) || n < 0 || n > 8) return toast("⚠️ Bitte 0 bis 8 Plätze angeben!");
+    const belegt = (f.mitfahrer || []).length;
+    if (n < belegt) return toast("⚠️ Es fahren schon " + belegt + " mit – erst Mitfahrer austragen!");
+    await ref("termine", t.id).update({
+      ["fahrten." + fid + ".plaetze"]: n
+    });
+    setPlatzEdit(null);
+    toast(n === 0 ? "✅ " + f.name + " – keine freien Plätze" : "✅ " + f.name + " – jetzt " + n + " Plätze");
+  };
   const fahrtAbsagen = async (t, fid) => {
     const fahrten = t.fahrten || {};
     const f = fahrten[fid];
@@ -3303,7 +3319,19 @@ function TermineTab({
         }, "➕ Mitfahrer"), fahrerOptionen.map(o => React.createElement("option", {
           key: o.id,
           value: o.id
-        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
+        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) && !(platzEdit && platzEdit.key === t.id + "|" + fid) ? React.createElement("button", {
+          onClick: () => setPlatzEdit({
+            key: t.id + "|" + fid,
+            wert: String(plaetze)
+          }),
+          title: "Plätze ändern",
+          style: {
+            ...kleinBtn,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #003070",
+            color: "#94a3b8"
+          }
+        }, "✏️ Plätze") : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
           onClick: () => fahrtAbsagen(t, fid),
           style: {
             ...kleinBtn,
@@ -3311,7 +3339,59 @@ function TermineTab({
             border: "1px solid rgba(248,113,113,0.3)",
             color: "#f87171"
           }
-        }, "Fahrt absagen") : null), mit.length > 0 ? React.createElement("div", {
+        }, "Fahrt absagen") : null), platzEdit && platzEdit.key === t.id + "|" + fid ? React.createElement("div", {
+          style: {
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+            marginTop: 6
+          }
+        }, React.createElement("input", {
+          type: "number",
+          min: mit.length,
+          max: 8,
+          autoFocus: true,
+          value: platzEdit.wert,
+          onChange: e => setPlatzEdit({
+            ...platzEdit,
+            wert: e.target.value
+          }),
+          onKeyDown: e => {
+            if (e.key === "Enter") fahrtPlaetzeSpeichern(t, fid);
+            if (e.key === "Escape") setPlatzEdit(null);
+          },
+          style: {
+            ...IS,
+            marginTop: 0,
+            width: 80,
+            flex: "none",
+            textAlign: "center"
+          }
+        }), React.createElement("div", {
+          style: {
+            flex: 1,
+            fontSize: 10,
+            color: "#64748b"
+          }
+        }, "freie Plätze (0 = keine" + (mit.length > 0 ? ", mind. " + mit.length + " wegen Mitfahrern" : "") + ")"), React.createElement("button", {
+          onClick: () => fahrtPlaetzeSpeichern(t, fid),
+          style: {
+            ...kleinBtn,
+            padding: "8px 12px",
+            background: "linear-gradient(135deg,#0066CC,#2288FF)",
+            border: "none",
+            color: "white"
+          }
+        }, "✓"), React.createElement("button", {
+          onClick: () => setPlatzEdit(null),
+          style: {
+            ...kleinBtn,
+            padding: "8px 12px",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #003070",
+            color: "#94a3b8"
+          }
+        }, "✕")) : null, mit.length > 0 ? React.createElement("div", {
           style: {
             display: "flex",
             flexWrap: "wrap",
