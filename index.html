@@ -2453,8 +2453,9 @@ function TermineTab({
   const fahrtAnbieten = async t => {
     const fi = fahrtInputs[t.id];
     if (!fi) return;
+    // 0 ist erlaubt: Fahrer fährt, nimmt aber niemanden mit.
     const plaetze = parseInt(fi.plaetze);
-    if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
+    if (isNaN(plaetze) || plaetze < 0) return toast("⚠️ Bitte die Zahl der freien Plätze angeben (0 = keine)!");
     // Admin/Eventorga dürfen einen anderen Fahrer wählen, alle anderen tragen nur sich selbst ein.
     if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
     const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
@@ -2476,7 +2477,7 @@ function TermineTab({
       }
     });
     fahrtSchliessen(t.id);
-    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + " – freie Plätze: " + Math.min(plaetze, 8));
+    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + (plaetze === 0 ? " – ohne freie Plätze" : " – freie Plätze: " + Math.min(plaetze, 8)));
   };
   const fahrtMitfahren = async (t, fid) => {
     const ich = cu.vorname + " " + cu.nachname;
@@ -3262,7 +3263,7 @@ function TermineTab({
             minWidth: 0,
             fontSize: 13,
             fontWeight: 700,
-            color: voll ? "#4ade80" : "#e2e8f0"
+            color: plaetze === 0 ? "#94a3b8" : voll ? "#4ade80" : "#e2e8f0"
           }
         }, "🚗 " + mbName(f.name), React.createElement("span", {
           style: {
@@ -3270,7 +3271,7 @@ function TermineTab({
             fontSize: 11,
             color: "#64748b"
           }
-        }, " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
+        }, plaetze === 0 ? " · keine freien Plätze" : " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
           style: {
             fontWeight: 400,
             fontSize: 11,
@@ -3393,6 +3394,8 @@ function TermineTab({
         }
       }, React.createElement("input", {
         type: "number",
+        min: 0,
+        max: 8,
         placeholder: "Plätze",
         value: fi.plaetze,
         onChange: e => setFahrtFeld(t.id, "plaetze", e.target.value),
@@ -3420,7 +3423,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
+      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer, 0 = keine) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich, 0 = keine)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
