@@ -3197,7 +3197,10 @@ function TermineTab({
       // Auswahl möglicher Fahrer (nur Admin/Eventorga): Benutzer der Mannschaft, die noch nicht fahren
       // oder mitfahren; Zusagen zuerst.
       const zusagen = t.zusagen || [];
-      const fahrerOptionen = kannBearbeiten ? benutzer.filter(b => (b.mannschaft || "1. Herren") === (t.mannschaft || meineMannschaft)).filter(b => !inFahrt.has(b.vorname + " " + b.nachname) && !(t.fahrten || {})[b.id]).sort((a, b) => {
+      // Wer zu- oder vielleicht-gesagt hat, wird immer angeboten – auch wenn das Mannschaftsfeld
+      // im Benutzerkonto fehlt oder abweicht.
+      const rueckmelder = new Set([...zusagen, ...(t.vielleicht || []).map(v => v.name || v)]);
+      const fahrerOptionen = kannBearbeiten ? benutzer.filter(b => (b.mannschaft || "1. Herren") === (t.mannschaft || meineMannschaft) || rueckmelder.has(b.vorname + " " + b.nachname)).filter(b => !inFahrt.has(b.vorname + " " + b.nachname) && !(t.fahrten || {})[b.id]).sort((a, b) => {
         const za = zusagen.includes(a.vorname + " " + a.nachname) ? 0 : 1;
         const zb = zusagen.includes(b.vorname + " " + b.nachname) ? 0 : 1;
         return za - zb || (a.vorname + a.nachname).localeCompare(b.vorname + b.nachname);
