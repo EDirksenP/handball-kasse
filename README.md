@@ -15,6 +15,12 @@ Live: https://3hsg-emden-kasse.de
   werden in der App live abonniert (`benutzer`, `spieler`, `eintraege`,
   `strafen`, `termine`, `getraenke`, `sonstiges`, `mannschaftskasse`,
   `zeitnahme`, `schwarzesbrett`, `strafenkatalog`, `stammdaten`).
+- **Installierbar & offline:** `manifest.webmanifest` + `icons/` machen die
+  App installierbar, `sw.js` (Service Worker) hält die Seite und die
+  CDN-Bibliotheken für den Offline-Start vor, Firestore puffert die Daten
+  selbst (`enablePersistence`). Neue CDN-Versionen nur mit fester
+  Versionsnummer einbinden; bei Änderungen an `sw.js` den `CACHE`-Namen
+  hochzählen.
 - **Hosting:** Vercel, Konfiguration in `vercel.json` (statische Auslieferung,
   alle Pfade auf `index.html`).
 

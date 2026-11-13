@@ -5,10 +5,18 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>3. Herren HSG Emden</title>
+  <link rel="manifest" href="/manifest.webmanifest"/>
+  <meta name="theme-color" content="#00112E"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192.png"/>
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+  <meta name="apple-mobile-web-app-title" content="HSG Kasse"/>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:#00112E;font-family:'Segoe UI',system-ui,sans-serif;}
@@ -32,6 +40,18 @@
     appId:"1:275232257519:web:4754493934b7f0173a321a"
   });
   window.db = firebase.firestore();
+  // Daten lokal auf dem Gerät puffern: App zeigt auch ohne Netz den letzten Stand,
+  // Buchungen ohne Netz werden gespeichert und später synchronisiert.
+  window.db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn("Offline-Speicher nicht verfügbar:", e.code));
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(e => console.warn("Service Worker:", e)));
+  }
+  // Android/Chrome: Installations-Dialog merken, damit die App einen eigenen Button anbieten kann
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    window.__installPrompt = e;
+    window.dispatchEvent(new Event("installprompt-bereit"));
+  });
 </script>
 <script>
 
@@ -6538,6 +6558,7 @@ function MainApp({
   const isEventorga = hasRolle("eventorga") || isAdmin;
   const isKasse = hasRolle("kasse") || isAdmin;
   const isZeitnahmeAdmin = hasRolle("zeitnahmeadmin") || isAdmin;
+  const installation = useInstallation();
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -6956,7 +6977,7 @@ function MainApp({
         fontSize: 20
       }
     }, "🎉"));
-  })(), React.createElement("div", {
+  })(), !installation.standalone && React.createElement("div", {
     id: "hs-banner",
     style: {
       background: "linear-gradient(135deg,#1e3a5f,#003F8A)",
@@ -6972,7 +6993,21 @@ function MainApp({
       fontSize: 12,
       color: "#93c5fd"
     }
-  }, "📱 Tipp: App zum Homescreen hinzufügen für schnellen Zugriff!"), React.createElement("button", {
+  }, installation.kannInstallieren ? "📱 App auf dem Handy installieren – funktioniert dann auch ohne Netz" : installation.ios ? "📱 Tipp: Teilen-Symbol → „Zum Home-Bildschirm“ – dann als App und auch ohne Netz" : "📱 Tipp: App zum Homescreen hinzufügen für schnellen Zugriff!"), installation.kannInstallieren && React.createElement("button", {
+    onClick: installation.installieren,
+    style: {
+      background: "linear-gradient(135deg,#0066CC,#2288FF)",
+      border: "none",
+      color: "white",
+      borderRadius: 8,
+      padding: "4px 10px",
+      fontSize: 11,
+      fontWeight: 700,
+      cursor: "pointer",
+      flexShrink: 0,
+      whiteSpace: "nowrap"
+    }
+  }, "Installieren"), React.createElement("button", {
     onClick: () => {
       const b = document.getElementById("hs-banner");
       if (b) b.style.display = "none";
@@ -9786,6 +9821,37 @@ function useOnline() {
     };
   }, []);
   return online;
+}
+function useInstallation() {
+  const standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const [prompt, setPrompt] = useState(() => window.__installPrompt || null);
+  useEffect(() => {
+    const bereit = () => setPrompt(window.__installPrompt || null);
+    const fertig = () => {
+      window.__installPrompt = null;
+      setPrompt(null);
+    };
+    window.addEventListener("installprompt-bereit", bereit);
+    window.addEventListener("appinstalled", fertig);
+    return () => {
+      window.removeEventListener("installprompt-bereit", bereit);
+      window.removeEventListener("appinstalled", fertig);
+    };
+  }, []);
+  const installieren = async () => {
+    if (!prompt) return;
+    prompt.prompt();
+    await prompt.userChoice.catch(() => null);
+    window.__installPrompt = null;
+    setPrompt(null);
+  };
+  const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  return {
+    standalone,
+    kannInstallieren: !!prompt,
+    installieren,
+    ios
+  };
 }
 function OfflineBanner() {
   return React.createElement("div", {
