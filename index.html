@@ -1,22 +1,14 @@
 <!DOCTYPE html>
-<!-- Quellcode der App: Diese Datei wird direkt bearbeitet (kein Build-Schritt), siehe README.md. -->
+<!-- GENERIERT aus quellcode/src (npm run build). Nicht von Hand bearbeiten – Änderungen gehören in den Quellcode, siehe README.md. -->
 <html lang="de">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>3. Herren HSG Emden</title>
-  <link rel="manifest" href="/manifest.webmanifest"/>
-  <meta name="theme-color" content="#00112E"/>
-  <link rel="icon" type="image/png" href="/icons/icon-192.png"/>
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
-  <meta name="apple-mobile-web-app-title" content="HSG Kasse"/>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:#00112E;font-family:'Segoe UI',system-ui,sans-serif;}
@@ -40,18 +32,6 @@
     appId:"1:275232257519:web:4754493934b7f0173a321a"
   });
   window.db = firebase.firestore();
-  // Daten lokal auf dem Gerät puffern: App zeigt auch ohne Netz den letzten Stand,
-  // Buchungen ohne Netz werden gespeichert und später synchronisiert.
-  window.db.enablePersistence({ synchronizeTabs: true }).catch(e => console.warn("Offline-Speicher nicht verfügbar:", e.code));
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(e => console.warn("Service Worker:", e)));
-  }
-  // Android/Chrome: Installations-Dialog merken, damit die App einen eigenen Button anbieten kann
-  window.addEventListener("beforeinstallprompt", e => {
-    e.preventDefault();
-    window.__installPrompt = e;
-    window.dispatchEvent(new Event("installprompt-bereit"));
-  });
 </script>
 <script>
 
@@ -61,19 +41,6 @@ const {
 } = React;
 const col = n => window.db.collection(n);
 const ref = (n, id) => window.db.collection(n).doc(id);
-// Guthaben nur per atomarem increment ändern – nie "alter Wert ± Betrag" schreiben,
-// sonst überschreiben sich gleichzeitige Buchungen von zwei Geräten gegenseitig.
-const cent = x => Math.round(x * 100) / 100;
-const gutDelta = betrag => firebase.firestore.FieldValue.increment(cent(betrag));
-const benutzerZuName = (benutzer, name) => benutzer.find(b => b.vorname + " " + b.nachname === name);
-// Für Werte, die per document.write in HTML (Druckansichten) eingesetzt werden.
-const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;"
-})[c]);
 const AUTH_KEY = "hsg_auth_v3";
 const MANNSCHAFTEN = ["1. Herren", "2. Herren", "3. Herren", "1. Damen", "2. Damen", "3. Damen"];
 const MANNSCHAFTEN_STANDARD = [...MANNSCHAFTEN];
@@ -630,9 +597,9 @@ function BenutzerTab({
     const html = `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>Mitgliederliste</title>
 <style>body{font-family:Arial,sans-serif;margin:30px;color:#111}.header{text-align:center;border-bottom:3px solid #003F8A;padding-bottom:16px;margin-bottom:20px}.header h1{color:#003F8A;font-size:22px;margin:0 0 4px 0}.header h2{font-size:15px;color:#333;margin:0;font-weight:normal}table{width:100%;border-collapse:collapse}th{background:#003F8A;color:white;padding:10px 12px;text-align:left;font-size:13px}td{padding:9px 12px;border-bottom:1px solid #e0e0e0;font-size:13px}tr:nth-child(even) td{background:#f4f7fb}.footer{margin-top:24px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px}</style>
 </head><body>
-<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${esc(pdfMannschaft)} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
+<div class="header"><h1>🤾 3. Herren HSG Emden</h1><h2>Mitgliederliste — ${pdfMannschaft} · Stand: ${new Date().toLocaleDateString("de-DE")} · ${mitglieder.length} Mitglieder</h2></div>
 <table><thead><tr><th>#</th><th>Trikot</th><th>Vorname</th><th>Nachname</th><th>Position</th><th>Handball-ID</th><th>Kategorie</th>${mitVerein ? "<th>Verein</th>" : ""}</tr></thead>
-<tbody>${mitglieder.map((b, i) => `<tr><td>${i + 1}</td><td>${esc(b.trikotnummer)}</td><td>${esc(b.vorname)}</td><td>${esc(b.nachname)}</td><td>${esc(b.position)}</td><td><strong>${esc(b.handballId)}</strong></td><td>${b.kategorie === "azubi" ? "Azubi/Schüler" : "Arbeiter"}</td>${mitVerein ? "<td>" + esc(vereinName(b.verein)) + "</td>" : ""}</tr>`).join("")}</tbody></table>
+<tbody>${mitglieder.map((b, i) => `<tr><td>${i + 1}</td><td>${b.trikotnummer || ""}</td><td>${b.vorname}</td><td>${b.nachname}</td><td>${b.position || ""}</td><td><strong>${b.handballId || ""}</strong></td><td>${b.kategorie === "azubi" ? "Azubi/Schüler" : "Arbeiter"}</td>${mitVerein ? "<td>" + vereinName(b.verein) + "</td>" : ""}</tr>`).join("")}</tbody></table>
 <div class="footer">Erstellt am ${new Date().toLocaleDateString("de-DE")} · HSG Emden Kasse App</div>
 </body></html>`;
     const win = window.open("", "_blank");
@@ -749,7 +716,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   };
   const saveEdit = async () => {
     if (!edit.vorname.trim() || !edit.nachname.trim()) return;
-    await ref("benutzer", edit.id).update({
+    await ref("benutzer", edit.id).set({
       vorname: edit.vorname.trim(),
       nachname: edit.nachname.trim(),
       benutzername: bn(edit.vorname, edit.nachname),
@@ -757,25 +724,52 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       rolle: rollenStrikt(edit).includes("admin") ? "admin" : rollenStrikt(edit)[0],
       rollen: rollenStrikt(edit),
       mannschaft: edit.mannschaft || "1. Herren",
+      guthaben: edit.guthaben || 0,
       geburtstag: edit.geburtstag || "",
       handballId: edit.handballId || "",
       trikotnummer: edit.trikotnummer || "",
       position: edit.position || "",
       kategorie: edit.kategorie || "arbeiter",
-      verein: edit.verein || ""
+      verein: edit.verein || "",
+      schuldVerbucht: edit.schuldVerbucht || 0
     });
     setEdit(null);
     toast("✅ Gespeichert");
   };
-  const aufladen = async () => {
+  const aufladen = async (vorzeichen = 1) => {
     const b = parseFloat(gutVal.replace(",", "."));
-    if (!b || b <= 0) return toast("Bitte gültigen Betrag eingeben!");
+    if (!b || b <= 0) return toast("Bitte gültigen Betrag eingeben (ohne Minus)!");
+    const neu = Math.round(((gutModal.guthaben || 0) + vorzeichen * b) * 100) / 100;
+    const altStand = gutModal.guthaben || 0;
+    const ausgleich = vorzeichen > 0 && altStand < 0 ? Math.min(b, -altStand) : 0;
+    const schonGezaehlt = Math.min(ausgleich, gutModal.schuldVerbucht || 0);
+    const alsEinnahme = Math.round((ausgleich - schonGezaehlt) * 100) / 100;
+    if (alsEinnahme > 0) {
+      const heute = todayStr();
+      await col("eintraege").add({
+        typ: "einnahme",
+        betrag: alsEinnahme,
+        beschreibung: "Schuld ausgeglichen",
+        person: `${gutModal.vorname} ${gutModal.nachname}`,
+        datum: fmtD(heute),
+        datumRaw: heute,
+        zeit: new Date().toLocaleTimeString("de-DE", {
+          hour: "2-digit",
+          minute: "2-digit"
+        }),
+        gebuchtvon: cu.benutzername,
+        ts: Date.now()
+      });
+    }
+    if (vorzeichen > 0 && gutModal.schuldVerbucht) await ref("benutzer", gutModal.id).update({
+      schuldVerbucht: Math.round(((gutModal.schuldVerbucht || 0) - schonGezaehlt) * 100) / 100
+    });
     await ref("benutzer", gutModal.id).update({
-      guthaben: gutDelta(b)
+      guthaben: neu
     });
     setGutModal(null);
     setGutVal("");
-    toast(`✅ ${b.toFixed(2)} € aufgeladen!`);
+    toast(vorzeichen > 0 ? `✅ ${b.toFixed(2)} € aufgeladen!${alsEinnahme > 0 ? ` (davon ${alsEinnahme.toFixed(2)} € Schuld → Kassenstand)` : ""}` : `✅ ${b.toFixed(2)} € ins Minus gebucht (Stand: ${neu.toFixed(2)} €)`);
   };
   const admins = benutzer.filter(b => b.rolle === "admin");
   const gruppen = MANNSCHAFTEN.map(m => ({
@@ -1468,7 +1462,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       fontWeight: 800,
       marginBottom: 4
     }
-  }, "💰 Guthaben aufladen"), React.createElement("div", {
+  }, "💰 Guthaben aufladen / ins Minus buchen"), React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#94a3b8",
@@ -1477,7 +1471,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
   }, gutModal.vorname, " ", gutModal.nachname), React.createElement("div", {
     style: {
       fontSize: 14,
-      color: "#4ade80",
+      color: (gutModal.guthaben || 0) < 0 ? "#f87171" : "#4ade80",
       marginBottom: 16,
       fontWeight: 700
     }
@@ -1502,7 +1496,7 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       marginTop: 14
     }
   }, React.createElement("button", {
-    onClick: aufladen,
+    onClick: () => aufladen(1),
     style: {
       flex: 1,
       padding: "12px",
@@ -1514,6 +1508,17 @@ tfoot td{font-weight:900;background:#e8f0fe;border-top:2px solid #003F8A}
       cursor: "pointer"
     }
   }, "✅ Aufladen"), React.createElement("button", {
+    onClick: () => aufladen(-1),
+    style: {
+      padding: "12px 12px",
+      background: "rgba(248,113,113,0.12)",
+      border: "1px solid #f8717166",
+      borderRadius: 12,
+      color: "#f87171",
+      fontWeight: 800,
+      cursor: "pointer"
+    }
+  }, "➖ Minus"), React.createElement("button", {
     onClick: () => {
       setGutModal(null);
       setGutVal("");
@@ -1819,47 +1824,25 @@ function StrafenTab({
     const bu = benutzer.find(b => b.vorname + " " + b.nachname === e.person);
     if (!bu) return toast("⚠️ Benutzer nicht gefunden!");
     if ((bu.guthaben || 0) < e.betrag) return toast("⚠️ Nicht genug Guthaben!");
-    const batch = window.db.batch();
-    batch.update(ref("strafen", e.id), {
+    await ref("strafen", e.id).update({
       bezahlt: true,
       zahlart: "guthaben",
-      guthabenBenutzerId: bu.id,
       bezahltAm: new Date().toLocaleDateString("de-DE"),
       bezahltDatum: new Date().toISOString().slice(0, 10)
     });
-    batch.update(ref("benutzer", bu.id), {
-      guthaben: gutDelta(-e.betrag)
+    await ref("benutzer", bu.id).update({
+      guthaben: Math.round(((bu.guthaben || 0) - e.betrag) * 100) / 100
     });
-    await batch.commit();
     toast(`✅ ${e.betrag.toFixed(2)} € vom Guthaben von ${e.person} abgezogen!`);
   };
-  const guthabenZurueck = (batch, e) => {
-    if (!e || !e.bezahlt || e.zahlart !== "guthaben") return true;
-    const buId = e.guthabenBenutzerId || benutzerZuName(benutzer, e.person)?.id;
-    if (!buId) return false;
-    batch.update(ref("benutzer", buId), {
-      guthaben: gutDelta(e.betrag || 0)
-    });
-    return true;
-  };
   const stornieren = async e => {
-    const batch = window.db.batch();
-    if (!guthabenZurueck(batch, e)) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
-    const del = firebase.firestore.FieldValue.delete();
-    batch.update(ref("strafen", e.id), {
-      bezahlt: false,
-      zahlart: del,
-      guthabenBenutzerId: del
+    await ref("strafen", e.id).update({
+      bezahlt: false
     });
-    await batch.commit();
-    toast(e.zahlart === "guthaben" ? `↩️ Zahlung storniert, ${(e.betrag || 0).toFixed(2)} € zurück aufs Guthaben` : `↩️ Zahlung wieder als offen markiert`);
+    toast(`↩️ Zahlung wieder als offen markiert`);
   };
   const loeschen = async id => {
-    const e = strafenEintraege.find(x => x.id === id);
-    const batch = window.db.batch();
-    if (!guthabenZurueck(batch, e)) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
-    batch.delete(ref("strafen", id));
-    await batch.commit();
+    await ref("strafen", id).delete();
     toast("🗑️ Strafe gelöscht");
   };
   const eigeneSpielerIds = new Set(eigeneSpieler.map(sp => sp.id));
@@ -2446,14 +2429,11 @@ function TermineTab({
     toast("↩️ Ausgetragen");
   };
   const [fahrtInputs, setFahrtInputs] = useState({});
-  // selbst = true: "Ich fahre" (Fahrer fest = ich), sonst Admin-Auswahl "Fahrer eintragen"
-  const fahrtOeffnen = (id, selbst) => setFahrtInputs(f => ({
+  const fahrtOeffnen = id => setFahrtInputs(f => ({
     ...f,
     [id]: {
       plaetze: "3",
-      info: "",
-      fahrerId: selbst ? cu.id : "",
-      selbst: !!selbst
+      info: ""
     }
   }));
   const fahrtSchliessen = id => setFahrtInputs(f => {
@@ -2473,31 +2453,21 @@ function TermineTab({
   const fahrtAnbieten = async t => {
     const fi = fahrtInputs[t.id];
     if (!fi) return;
-    // 0 ist erlaubt: Fahrer fährt, nimmt aber niemanden mit.
     const plaetze = parseInt(fi.plaetze);
-    if (isNaN(plaetze) || plaetze < 0) return toast("⚠️ Bitte die Zahl der freien Plätze angeben (0 = keine)!");
-    // Admin/Eventorga dürfen einen anderen Fahrer wählen, alle anderen tragen nur sich selbst ein.
-    if (kannBearbeiten && !fi.fahrerId) return toast("⚠️ Bitte auswählen, wer fährt!");
-    const fahrerId = kannBearbeiten ? fi.fahrerId : cu.id;
-    const selbst = fahrerId === cu.id;
-    const name = selbst ? cu.vorname + " " + cu.nachname : fi.fahrerName;
-    if (!name) return toast("⚠️ Bitte auswählen, wer fährt!");
-    if ((t.fahrten || {})[fahrerId]) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " bereits.");
-    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(name));
-    if (bei) return toast("⚠️ " + (selbst ? "Du fährst" : name + " fährt") + " schon bei " + bei.name + " mit – erst dort austragen!");
+    if (!plaetze || plaetze < 1) return toast("⚠️ Bitte die Zahl der freien Plätze angeben!");
+    const ich = cu.vorname + " " + cu.nachname;
+    const bei = Object.values(t.fahrten || {}).find(f => (f.mitfahrer || []).includes(ich));
+    if (bei) return toast("⚠️ Du fährst schon bei " + bei.name + " mit – erst dort austragen!");
     await ref("termine", t.id).update({
-      ["fahrten." + fahrerId]: {
-        name,
+      ["fahrten." + cu.id]: {
+        name: ich,
         plaetze: Math.min(plaetze, 8),
         info: (fi.info || "").trim(),
-        mitfahrer: [],
-        ...(selbst ? {} : {
-          eingetragenVon: cu.benutzername
-        })
+        mitfahrer: []
       }
     });
     fahrtSchliessen(t.id);
-    toast((selbst ? "✅ Du fährst" : "✅ " + name + " fährt") + (plaetze === 0 ? " – ohne freie Plätze" : " – freie Plätze: " + Math.min(plaetze, 8)));
+    toast("✅ Du fährst – freie Plätze: " + Math.min(plaetze, 8));
   };
   const fahrtMitfahren = async (t, fid) => {
     const ich = cu.vorname + " " + cu.nachname;
@@ -2514,20 +2484,6 @@ function TermineTab({
     });
     toast("✅ Du fährst bei " + f.name + " mit.");
   };
-  const fahrtMitfahrerEintragen = async (t, fid, person) => {
-    if (!kannBearbeiten || !person) return;
-    const fahrten = t.fahrten || {};
-    const f = fahrten[fid];
-    if (!f) return;
-    const bei = Object.values(fahrten).find(x => x.name === person || (x.mitfahrer || []).includes(person));
-    if (bei) return toast("⚠️ " + person + (bei.name === person ? " fährt selbst." : " fährt schon bei " + bei.name + " mit."));
-    const liste = f.mitfahrer || [];
-    if (liste.length >= (f.plaetze || 0)) return toast("⚠️ Das Auto ist voll!");
-    await ref("termine", t.id).update({
-      ["fahrten." + fid + ".mitfahrer"]: [...liste, person]
-    });
-    toast("✅ " + person + " fährt bei " + f.name + " mit.");
-  };
   const fahrtAustragen = async (t, fid, person) => {
     const f = (t.fahrten || {})[fid];
     if (!f) return;
@@ -2535,22 +2491,6 @@ function TermineTab({
       ["fahrten." + fid + ".mitfahrer"]: (f.mitfahrer || []).filter(n => n !== person)
     });
     toast("↩️ Ausgetragen");
-  };
-  // Plätze einer bestehenden Fahrt ändern (Fahrer selbst oder Admin/Eventorga)
-  const [platzEdit, setPlatzEdit] = useState(null);
-  const fahrtPlaetzeSpeichern = async (t, fid) => {
-    const f = (t.fahrten || {})[fid];
-    if (!f || !platzEdit) return;
-    if (fid !== cu.id && !kannBearbeiten) return toast("⚠️ Keine Berechtigung!");
-    const n = parseInt(platzEdit.wert);
-    if (isNaN(n) || n < 0 || n > 8) return toast("⚠️ Bitte 0 bis 8 Plätze angeben!");
-    const belegt = (f.mitfahrer || []).length;
-    if (n < belegt) return toast("⚠️ Es fahren schon " + belegt + " mit – erst Mitfahrer austragen!");
-    await ref("termine", t.id).update({
-      ["fahrten." + fid + ".plaetze"]: n
-    });
-    setPlatzEdit(null);
-    toast(n === 0 ? "✅ " + f.name + " – keine freien Plätze" : "✅ " + f.name + " – jetzt " + n + " Plätze");
   };
   const fahrtAbsagen = async (t, fid) => {
     const fahrten = t.fahrten || {};
@@ -3230,25 +3170,6 @@ function TermineTab({
         (f.mitfahrer || []).forEach(n => inFahrt.add(n));
       });
       const ohneFahrt = (t.zusagen || []).filter(n => !inFahrt.has(n));
-      // Auswahl für Fahrer/Mitfahrer (nur Admin/Eventorga). Zusagen speichern Namen aus der
-      // Spielerliste, daher wird über Namen gearbeitet: Rückmelder dieses Termins, Spieler und
-      // Benutzer der Mannschaft. Schlüssel einer Fahrt = Benutzer-ID, sonst Spieler-ID, sonst Name.
-      const zusagen = t.zusagen || [];
-      const vielleichtNamen = (t.vielleicht || []).map(v => v.name || v);
-      const teamName = t.mannschaft || meineMannschaft;
-      const kandidatNamen = kannBearbeiten ? [...new Set([...zusagen, ...vielleichtNamen, ...eigeneSpieler.map(sp => sp.name), ...benutzer.filter(b => (b.mannschaft || "1. Herren") === teamName).map(b => b.vorname + " " + b.nachname)])] : [];
-      const fahrerOptionen = kandidatNamen.filter(n => n && n.trim()).map(n => {
-        const bu = benutzer.find(b => b.vorname + " " + b.nachname === n);
-        const sp = spieler.find(x => x.name === n);
-        return {
-          id: bu ? bu.id : sp ? "sp_" + sp.id : "n_" + n.replace(/[^A-Za-z0-9]/g, "_"),
-          name: n
-        };
-      }).filter(o => !inFahrt.has(o.name) && !(t.fahrten || {})[o.id]).sort((a, b) => {
-        const rang = o => zusagen.includes(o.name) ? 0 : vielleichtNamen.includes(o.name) ? 1 : 2;
-        return rang(a) - rang(b) || a.name.localeCompare(b.name);
-      });
-      const optLabel = o => (o.id === cu.id ? "Ich (" + o.name + ")" : o.name) + (zusagen.includes(o.name) ? " ✅" : vielleichtNamen.includes(o.name) ? " ❓" : "");
       const kleinBtn = {
         borderRadius: 8,
         padding: "5px 10px",
@@ -3299,7 +3220,7 @@ function TermineTab({
             minWidth: 0,
             fontSize: 13,
             fontWeight: 700,
-            color: plaetze === 0 ? "#94a3b8" : voll ? "#4ade80" : "#e2e8f0"
+            color: voll ? "#4ade80" : "#e2e8f0"
           }
         }, "🚗 " + mbName(f.name), React.createElement("span", {
           style: {
@@ -3307,7 +3228,7 @@ function TermineTab({
             fontSize: 11,
             color: "#64748b"
           }
-        }, plaetze === 0 ? " · keine freien Plätze" : " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
+        }, " " + mit.length + "/" + plaetze + " Plätze"), f.info ? React.createElement("div", {
           style: {
             fontWeight: 400,
             fontSize: 11,
@@ -3321,37 +3242,7 @@ function TermineTab({
             border: "1px solid rgba(56,189,248,0.4)",
             color: "#38bdf8"
           }
-        }, "✋ Mitfahren") : null, kommend && kannBearbeiten && !voll && fahrerOptionen.length > 0 ? React.createElement("select", {
-          value: "",
-          onChange: e => {
-            const o = fahrerOptionen.find(x => x.id === e.target.value);
-            if (o) fahrtMitfahrerEintragen(t, fid, o.name);
-          },
-          style: {
-            ...kleinBtn,
-            background: "rgba(74,222,128,0.1)",
-            border: "1px solid rgba(74,222,128,0.35)",
-            color: "#4ade80",
-            maxWidth: 150
-          }
-        }, React.createElement("option", {
-          value: ""
-        }, "➕ Mitfahrer"), fahrerOptionen.map(o => React.createElement("option", {
-          key: o.id,
-          value: o.id
-        }, optLabel(o)))) : null, kommend && (fid === cu.id || kannBearbeiten) && !(platzEdit && platzEdit.key === t.id + "|" + fid) ? React.createElement("button", {
-          onClick: () => setPlatzEdit({
-            key: t.id + "|" + fid,
-            wert: String(plaetze)
-          }),
-          title: "Plätze ändern",
-          style: {
-            ...kleinBtn,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid #003070",
-            color: "#94a3b8"
-          }
-        }, "✏️ Plätze") : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
+        }, "✋ Mitfahren") : null, kommend && (fid === cu.id || kannBearbeiten) ? React.createElement("button", {
           onClick: () => fahrtAbsagen(t, fid),
           style: {
             ...kleinBtn,
@@ -3359,59 +3250,7 @@ function TermineTab({
             border: "1px solid rgba(248,113,113,0.3)",
             color: "#f87171"
           }
-        }, "Fahrt absagen") : null), platzEdit && platzEdit.key === t.id + "|" + fid ? React.createElement("div", {
-          style: {
-            display: "flex",
-            gap: 6,
-            alignItems: "center",
-            marginTop: 6
-          }
-        }, React.createElement("input", {
-          type: "number",
-          min: mit.length,
-          max: 8,
-          autoFocus: true,
-          value: platzEdit.wert,
-          onChange: e => setPlatzEdit({
-            ...platzEdit,
-            wert: e.target.value
-          }),
-          onKeyDown: e => {
-            if (e.key === "Enter") fahrtPlaetzeSpeichern(t, fid);
-            if (e.key === "Escape") setPlatzEdit(null);
-          },
-          style: {
-            ...IS,
-            marginTop: 0,
-            width: 80,
-            flex: "none",
-            textAlign: "center"
-          }
-        }), React.createElement("div", {
-          style: {
-            flex: 1,
-            fontSize: 10,
-            color: "#64748b"
-          }
-        }, "freie Plätze (0 = keine" + (mit.length > 0 ? ", mind. " + mit.length + " wegen Mitfahrern" : "") + ")"), React.createElement("button", {
-          onClick: () => fahrtPlaetzeSpeichern(t, fid),
-          style: {
-            ...kleinBtn,
-            padding: "8px 12px",
-            background: "linear-gradient(135deg,#0066CC,#2288FF)",
-            border: "none",
-            color: "white"
-          }
-        }, "✓"), React.createElement("button", {
-          onClick: () => setPlatzEdit(null),
-          style: {
-            ...kleinBtn,
-            padding: "8px 12px",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid #003070",
-            color: "#94a3b8"
-          }
-        }, "✕")) : null, mit.length > 0 ? React.createElement("div", {
+        }, "Fahrt absagen") : null), mit.length > 0 ? React.createElement("div", {
           style: {
             display: "flex",
             flexWrap: "wrap",
@@ -3443,59 +3282,26 @@ function TermineTab({
             fontWeight: 900
           }
         }, "×") : null))) : null);
-      }), kommend && !fi && (!ichFahre && !ichMitfahrer || kannBearbeiten && fahrerOptionen.length > 0) ? React.createElement("div", {
-        style: {
-          display: "flex",
-          gap: 6,
-          flexWrap: "wrap",
-          marginTop: 8
-        }
-      }, !ichFahre && !ichMitfahrer ? React.createElement("button", {
-        onClick: () => fahrtOeffnen(t.id, true),
+      }), kommend && !ichFahre && !ichMitfahrer && !fi ? React.createElement("button", {
+        onClick: () => fahrtOeffnen(t.id),
         style: {
           ...kleinBtn,
+          marginTop: 8,
           background: "rgba(56,189,248,0.12)",
           border: "1px solid rgba(56,189,248,0.4)",
           color: "#38bdf8"
         }
-      }, "🚗 Ich fahre") : null, kannBearbeiten && fahrerOptionen.length > 0 ? React.createElement("button", {
-        onClick: () => fahrtOeffnen(t.id, false),
-        style: {
-          ...kleinBtn,
-          background: "rgba(167,139,250,0.12)",
-          border: "1px solid rgba(167,139,250,0.4)",
-          color: "#a78bfa"
-        }
-      }, "👥 Fahrer eintragen") : null) : null, fi ? React.createElement("div", {
+      }, "🚗 Ich fahre") : null, fi ? React.createElement("div", {
         style: {
           marginTop: 8
         }
-      }, kannBearbeiten && !fi.selbst ? React.createElement("select", {
-        value: fi.fahrerId,
-        onChange: e => {
-          const o = fahrerOptionen.find(x => x.id === e.target.value);
-          setFahrtFeld(t.id, "fahrerId", e.target.value);
-          setFahrtFeld(t.id, "fahrerName", o ? o.name : "");
-        },
-        style: {
-          ...IS,
-          marginTop: 0,
-          marginBottom: 6
-        }
-      }, React.createElement("option", {
-        value: ""
-      }, "– Wer fährt? –"), fahrerOptionen.map(o => React.createElement("option", {
-        key: o.id,
-        value: o.id
-      }, optLabel(o)))) : null, React.createElement("div", {
+      }, React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
         }
       }, React.createElement("input", {
         type: "number",
-        min: 0,
-        max: 8,
         placeholder: "Plätze",
         value: fi.plaetze,
         onChange: e => setFahrtFeld(t.id, "plaetze", e.target.value),
@@ -3523,7 +3329,7 @@ function TermineTab({
           color: "#64748b",
           margin: "4px 0 6px"
         }
-      }, kannBearbeiten && !fi.selbst ? "Plätze = freie Plätze für Mitfahrer (ohne Fahrer, 0 = keine) · ✅ zugesagt · ❓ vielleicht" : "Plätze = freie Plätze für Mitfahrer (ohne dich, 0 = keine)"), React.createElement("div", {
+      }, "Plätze = freie Plätze für Mitfahrer (ohne dich)"), React.createElement("div", {
         style: {
           display: "flex",
           gap: 6
@@ -3691,10 +3497,10 @@ function TermineTab({
   <h1>🤾 3. Herren HSG Emden</h1>
   <h2>Spielberechtigungsnachweis</h2>
   <div class="meta">
-    <span>🏆 ${esc(t.titel)}</span>
+    <span>🏆 ${t.titel}</span>
     <span>📅 ${datumStr}</span>
-    <span>🕐 ${esc(t.uhrzeit)} Uhr</span>
-    <span>📍 ${esc(t.ort)}</span>
+    <span>🕐 ${t.uhrzeit} Uhr</span>
+    <span>📍 ${t.ort}</span>
   </div>
 </div>
 <div style="margin-bottom:10px; font-size:13px;">
@@ -3724,11 +3530,11 @@ function TermineTab({
     ${alleZeilen.map((sp, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${esc(sp.trikotnummer)}</td>
-      <td>${esc(sp.vorname)}</td>
-      <td>${esc(sp.nachname)}</td>
-      <td>${esc(sp.position)}</td>
-      <td><strong>${esc(sp.handballId)}</strong></td>
+      <td>${sp.trikotnummer}</td>
+      <td>${sp.vorname}</td>
+      <td>${sp.nachname}</td>
+      <td>${sp.position}</td>
+      <td><strong>${sp.handballId}</strong></td>
       <td class="${sp.status === "✅" ? "status-ok" : sp.status === "Gast" ? "status-gast" : "status-vl"}">${sp.status}</td>
       <td class="check"><span class="checkbox">${(sp.position || "").startsWith("Feldspieler") ? "✓" : ""}</span></td>
       <td class="check"><span class="checkbox">${sp.position === "Torwart" ? "✓" : ""}</span></td>
@@ -6558,7 +6364,6 @@ function MainApp({
   const isEventorga = hasRolle("eventorga") || isAdmin;
   const isKasse = hasRolle("kasse") || isAdmin;
   const isZeitnahmeAdmin = hasRolle("zeitnahmeadmin") || isAdmin;
-  const installation = useInstallation();
   const [pwForm, setPwForm] = useState({
     alt: "",
     neu: "",
@@ -6701,6 +6506,8 @@ function MainApp({
   const gwSObj = spieler.find(s => s.id === gwS);
   const gwBu = gwSObj ? benutzer.find(b => b.vorname + " " + b.nachname === gwSObj.name) : null;
   const gut = gwBu?.guthaben || 0;
+  const [minusOk, setMinusOk] = useState(false);
+  const minusErlaubt = isAdmin && minusOk;
   const [buchKat, setBuchKat] = useState("getraenk");
   const [qrModal, setQrModal] = useState(null);
   const [menuOffen, setMenuOffen] = useState(false);
@@ -6711,13 +6518,15 @@ function MainApp({
     const sp = spieler.find(s => s.id === gwS);
     if (zahlart === "guthaben") {
       if (!gwBu) return toast("⚠️ Kein Benutzer für diesen Spieler gefunden!");
-      if (gut < g.preis) return toast(`⚠️ Guthaben reicht nicht! (${gut.toFixed(2)} €)`);
+      if (gut < g.preis && !minusErlaubt) return toast(`⚠️ Guthaben reicht nicht! (${gut.toFixed(2)} €)`);
+      const unterNull = Math.max(0, g.preis - Math.max(gut, 0));
+      const upd = {
+        guthaben: Math.round((gut - g.preis) * 100) / 100
+      };
+      if (unterNull > 0) upd.schuldVerbucht = Math.round(((gwBu.schuldVerbucht || 0) + unterNull) * 100) / 100;
+      await ref("benutzer", gwBu.id).update(upd);
     }
-    const batch = window.db.batch();
-    if (zahlart === "guthaben") batch.update(ref("benutzer", gwBu.id), {
-      guthaben: gutDelta(-g.preis)
-    });
-    batch.set(col("eintraege").doc(), {
+    await col("eintraege").add({
       typ,
       betrag: g.preis,
       beschreibung: g.name,
@@ -6732,12 +6541,8 @@ function MainApp({
       }),
       gebuchtvon: cu.benutzername,
       zahlart,
-      ...(zahlart === "guthaben" ? {
-        guthabenBenutzerId: gwBu.id
-      } : {}),
       ts: Date.now()
     });
-    await batch.commit();
     toast(`✅ ${g.emoji} ${g.name} für ${sp.name}! (${zahlart === "guthaben" ? "💰 Guthaben" : "💵 Direkt"})`);
   };
   const buchG = async g => buchArtikel(g, "getraenk");
@@ -6822,17 +6627,7 @@ function MainApp({
     toast("✅ Gespeichert");
   };
   const delE = async id => {
-    const e = eintraege.find(x => x.id === id);
-    const batch = window.db.batch();
-    if (e && e.zahlart === "guthaben") {
-      const buId = e.guthabenBenutzerId || benutzerZuName(benutzer, e.person)?.id;
-      if (!buId) return toast("⚠️ Benutzer für Guthaben-Rückbuchung nicht gefunden!");
-      batch.update(ref("benutzer", buId), {
-        guthaben: gutDelta(e.betrag || 0)
-      });
-    }
-    batch.delete(ref("eintraege", id));
-    await batch.commit();
+    await ref("eintraege", id).delete();
     toast("🗑️ Gelöscht");
   };
   const ein = eintraege.filter(e => e.typ === "einnahme").reduce((s, e) => s + e.betrag, 0);
@@ -6977,7 +6772,7 @@ function MainApp({
         fontSize: 20
       }
     }, "🎉"));
-  })(), !installation.standalone && React.createElement("div", {
+  })(), React.createElement("div", {
     id: "hs-banner",
     style: {
       background: "linear-gradient(135deg,#1e3a5f,#003F8A)",
@@ -6993,21 +6788,7 @@ function MainApp({
       fontSize: 12,
       color: "#93c5fd"
     }
-  }, installation.kannInstallieren ? "📱 App auf dem Handy installieren – funktioniert dann auch ohne Netz" : installation.ios ? "📱 Tipp: Teilen-Symbol → „Zum Home-Bildschirm“ – dann als App und auch ohne Netz" : "📱 Tipp: App zum Homescreen hinzufügen für schnellen Zugriff!"), installation.kannInstallieren && React.createElement("button", {
-    onClick: installation.installieren,
-    style: {
-      background: "linear-gradient(135deg,#0066CC,#2288FF)",
-      border: "none",
-      color: "white",
-      borderRadius: 8,
-      padding: "4px 10px",
-      fontSize: 11,
-      fontWeight: 700,
-      cursor: "pointer",
-      flexShrink: 0,
-      whiteSpace: "nowrap"
-    }
-  }, "Installieren"), React.createElement("button", {
+  }, "📱 Tipp: App zum Homescreen hinzufügen für schnellen Zugriff!"), React.createElement("button", {
     onClick: () => {
       const b = document.getElementById("hs-banner");
       if (b) b.style.display = "none";
@@ -7573,7 +7354,7 @@ function MainApp({
         fontWeight: 600,
         textAlign: "center"
       }
-    }, "⚠️ ", meinGut === 0 ? "Kein Guthaben mehr!" : "Guthaben fast aufgebraucht!", " Beim Admin aufladen lassen.", " ", React.createElement("a", {
+    }, "⚠️", " ", meinGut < 0 ? `Du schuldest der Kasse ${Math.abs(meinGut).toFixed(2)} €!` : meinGut === 0 ? "Kein Guthaben mehr!" : "Guthaben fast aufgebraucht!", " ", meinGut < 0 ? "Bitte ausgleichen." : "Beim Admin aufladen lassen.", " ", React.createElement("a", {
       href: "https://www.paypal.me/HandballEMD",
       target: "_blank",
       rel: "noopener noreferrer",
@@ -8051,7 +7832,22 @@ function MainApp({
       color: gut > 0 ? "#4ade80" : "#f87171",
       fontWeight: 700
     }
-  }, "💰 Guthaben: ", gut.toFixed(2), " € ", gut <= 0 ? "— Bitte aufladen!" : ""), React.createElement("div", {
+  }, "💰 Guthaben: ", gut.toFixed(2), " € ", gut <= 0 ? "— Bitte aufladen!" : ""), gwS && zahlart === "guthaben" && isAdmin ? React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 12,
+      fontSize: 13,
+      color: minusOk ? "#f87171" : "#94a3b8",
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, React.createElement("input", {
+    type: "checkbox",
+    checked: minusOk,
+    onChange: e => setMinusOk(e.target.checked)
+  }), "➖ Ins Minus buchen erlauben (anschreiben)") : null, React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#94a3b8",
@@ -8097,7 +7893,7 @@ function MainApp({
       gap: 10
     }
   }, (buchKat === "getraenk" ? getraenke : sonstiges).map(g => {
-    const nok = zahlart === "guthaben" && gwS && gut < g.preis;
+    const nok = zahlart === "guthaben" && gwS && gut < g.preis && !minusErlaubt;
     const akzent = buchKat === "getraenk" ? "#2288FF" : "#a78bfa";
     return React.createElement("button", {
       key: g.id,
@@ -8631,6 +8427,8 @@ function MainApp({
     const eigeneBenutzer = benutzer.filter(b => (b.mannschaft || "1. Herren") === meineMannschaftUebersicht && b.rolle !== "admin");
     const guthabenSumme = eigeneBenutzer.reduce((s, b) => s + (b.guthaben || 0), 0);
     const guthabenAnzahl = eigeneBenutzer.filter(b => (b.guthaben || 0) > 0).length;
+    const schuldenBenutzer = eigeneBenutzer.filter(b => (b.guthaben || 0) < 0);
+    const schuldenSumme = schuldenBenutzer.reduce((s, b) => s + (b.guthaben || 0), 0);
     return React.createElement(React.Fragment, null, React.createElement("div", {
       style: {
         background: "linear-gradient(135deg,#14532D,#052e16)",
@@ -8697,7 +8495,34 @@ function MainApp({
       style: {
         fontSize: 30
       }
-    }, "💰")));
+    }, "💰")), schuldenBenutzer.length > 0 ? React.createElement("div", {
+      style: {
+        background: "rgba(248,113,113,0.08)",
+        border: "2px solid #f8717166",
+        borderRadius: 15,
+        padding: "16px 16px",
+        marginTop: 10
+      }
+    }, React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#fca5a5"
+      }
+    }, "🔻 Offene Schulden bei der Kasse"), React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        color: "#f87171",
+        marginTop: 4
+      }
+    }, schuldenSumme.toFixed(2), " €"), React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        marginTop: 6,
+        lineHeight: 1.6
+      }
+    }, schuldenBenutzer.slice().sort((a, b) => (a.guthaben || 0) - (b.guthaben || 0)).map(b => `${b.vorname} ${b.nachname}: ${(b.guthaben || 0).toFixed(2)} €`).join(" • "))) : null);
   })(), (() => {
     const MONATE_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
     const monatsMap = {};
@@ -9761,7 +9586,7 @@ function MainApp({
       if (!qrModal) return;
       const url = "https://3hsg-emden-kasse.de?buche=" + qrModal.id;
       const win = window.open("", "_blank");
-      win.document.write("<!DOCTYPE html><html><head><title>QR " + esc(qrModal.name) + "</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>" + esc(qrModal.emoji) + " " + esc(qrModal.name) + " — " + qrModal.preis.toFixed(2) + " €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>" + url + "</p><script>new QRCode(document.getElementById('qr'),{text:'" + url + "',width:300,height:300});<\/script></body></html>");
+      win.document.write("<!DOCTYPE html><html><head><title>QR " + qrModal.name + "</title><script src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'><\/script></head><body style='font-family:Arial;text-align:center;padding:40px;background:#fff'><h2>" + qrModal.emoji + " " + qrModal.name + " — " + qrModal.preis.toFixed(2) + " €</h2><div id='qr' style='display:inline-block;margin:20px'></div><p style='color:#666;font-size:13px'>" + url + "</p><script>new QRCode(document.getElementById('qr'),{text:'" + url + "',width:300,height:300});<\/script></body></html>");
       win.document.close();
       setTimeout(() => win.print(), 800);
     },
@@ -9821,37 +9646,6 @@ function useOnline() {
     };
   }, []);
   return online;
-}
-function useInstallation() {
-  const standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  const [prompt, setPrompt] = useState(() => window.__installPrompt || null);
-  useEffect(() => {
-    const bereit = () => setPrompt(window.__installPrompt || null);
-    const fertig = () => {
-      window.__installPrompt = null;
-      setPrompt(null);
-    };
-    window.addEventListener("installprompt-bereit", bereit);
-    window.addEventListener("appinstalled", fertig);
-    return () => {
-      window.removeEventListener("installprompt-bereit", bereit);
-      window.removeEventListener("appinstalled", fertig);
-    };
-  }, []);
-  const installieren = async () => {
-    if (!prompt) return;
-    prompt.prompt();
-    await prompt.userChoice.catch(() => null);
-    window.__installPrompt = null;
-    setPrompt(null);
-  };
-  const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  return {
-    standalone,
-    kannInstallieren: !!prompt,
-    installieren,
-    ios
-  };
 }
 function OfflineBanner() {
   return React.createElement("div", {
